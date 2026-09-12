@@ -121,11 +121,11 @@ export default async function JourneyReportPage({
         >
           ← Back to client
         </Link>
-        <PrintButton />
+        <PrintButton clientName={typedClient.name} />
       </div>
 
       {/* Report content */}
-      <div className="max-w-3xl mx-auto px-8 py-12">
+      <div id="report-content" className="max-w-3xl mx-auto px-8 py-12">
         {/* Header */}
         <div className="border-b-2 border-gray-900 pb-6 mb-8">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">

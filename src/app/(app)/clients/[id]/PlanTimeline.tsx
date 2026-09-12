@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef, useEffect } from 'react'
 import type { PlanStep, StepStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { updateStepAction, updateStepNotesAction, updateStepConfigAction } from './actions'
@@ -292,6 +292,26 @@ function GanttChart({
   const [activeId, setActiveId]   = useState<string | null>(null)
   const [doneDate, setDoneDate]   = useState(today())
   const [isPending, startTransition] = useTransition()
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  // Auto-size colWidth to fit 30 days on mount, and support pinch-to-zoom
+  useEffect(() => {
+    if (wrapperRef.current) {
+      const available = wrapperRef.current.offsetWidth - 180 - 80
+      const ideal = Math.floor(available / TOTAL_DAYS)
+      setColWidth(Math.max(MIN_COL, Math.min(MAX_COL, ideal)))
+    }
+
+    const el = wrapperRef.current
+    if (!el) return
+    function onWheel(e: WheelEvent) {
+      if (!e.ctrlKey) return
+      e.preventDefault()
+      setColWidth((w) => Math.max(MIN_COL, Math.min(MAX_COL, w - Math.sign(e.deltaY) * 2)))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   const sorted = [...steps].sort((a, b) => a.step_order - b.step_order)
   const totalW = TOTAL_DAYS * colWidth
@@ -313,7 +333,7 @@ function GanttChart({
   }
 
   return (
-    <div>
+    <div ref={wrapperRef}>
       {/* Zoom controls */}
       <div className="flex items-center justify-end gap-1.5 mb-3">
         <span className="text-xs text-gray-400 mr-1">Zoom</span>

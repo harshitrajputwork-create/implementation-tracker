@@ -24,4 +24,16 @@ body {
   .no-print {
     display: none !important;
   }
+  /* Hide sidebar, nav, and app shell — only print the report content */
+  body > div > *:not(main) {
+    display: none !important;
+  }
+  main > *:not([id="report-content"]) {
+    display: none !important;
+  }
+  /* Force background colors to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }
