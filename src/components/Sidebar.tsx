@@ -10,7 +10,7 @@ import { CHANGELOG } from '@/lib/changelog'
 import {
   LayoutDashboard, Plus, LogOut, ClipboardList,
   Users, BookOpen, Sparkles, ChevronDown, ChevronUp,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, Settings,
 } from 'lucide-react'
 
 interface SidebarProps { user: Profile }
@@ -50,10 +50,11 @@ export default function Sidebar({ user }: SidebarProps) {
   }
 
   const navItems = [
-    { href: '/dashboard',   label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/clients/new', label: 'New Client', icon: Plus,      hideFor: ['visitor'] as const },
-    { href: '/team',        label: 'Team',       icon: Users,     showFor: ['admin'] as const },
-    { href: '/library',     label: 'Use Cases',  icon: BookOpen,  showFor: ['admin'] as const },
+    { href: '/dashboard',   label: 'Dashboard',     icon: LayoutDashboard },
+    { href: '/clients/new', label: 'New Client',    icon: Plus,     hideFor: ['visitor'] as const },
+    { href: '/team',        label: 'Team',          icon: Users,    showFor: ['admin'] as const },
+    { href: '/library',     label: 'Use Cases',     icon: BookOpen, showFor: ['admin'] as const },
+    { href: '/config',      label: 'Configuration', icon: Settings, showFor: ['admin'] as const },
   ]
 
   return (

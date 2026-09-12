@@ -59,12 +59,20 @@ async function createClientAction(formData: FormData) {
 
   if (error || !client) return
 
-  const steps = PLAN_TEMPLATE.map((s) => ({
+  // Use DB template if available, fall back to hardcoded constant
+  const { data: templateRows } = await supabase
+    .from('step_templates')
+    .select('step_order, step_name, ideated_day_range, description')
+    .order('step_order')
+
+  const template = templateRows && templateRows.length > 0 ? templateRows : PLAN_TEMPLATE
+
+  const steps = template.map((s) => ({
     client_id: client.id,
     step_name: s.step_name,
     ideated_day_range: s.ideated_day_range,
     step_order: s.step_order,
-    description: s.description,
+    description: s.description ?? null,
     status: 'not_started' as const,
   }))
 
