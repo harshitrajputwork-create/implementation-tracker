@@ -294,23 +294,34 @@ function GanttChart({
   const [isPending, startTransition] = useTransition()
   const wrapperRef = useRef<HTMLDivElement>(null)
 
-  // Auto-size colWidth to fit 30 days on mount, and support pinch-to-zoom
+  // ResizeObserver keeps colWidth in sync with container width (handles initial
+  // layout settle, sidebar toggle, and window resize).
   useEffect(() => {
-    if (wrapperRef.current) {
-      const available = wrapperRef.current.offsetWidth - 180 - 80
-      const ideal = Math.floor(available / TOTAL_DAYS)
-      setColWidth(Math.max(MIN_COL, Math.min(MAX_COL, ideal)))
-    }
-
     const el = wrapperRef.current
     if (!el) return
+
+    const observer = new ResizeObserver(([entry]) => {
+      const available = entry.contentRect.width - 180 - 16
+      const ideal = Math.floor(available / TOTAL_DAYS)
+      setColWidth((prev) => {
+        // Only auto-fit when user hasn't manually zoomed (within ±4px of auto)
+        const auto = Math.max(MIN_COL, Math.min(MAX_COL, ideal))
+        return auto
+      })
+    })
+    observer.observe(el)
+
     function onWheel(e: WheelEvent) {
       if (!e.ctrlKey) return
       e.preventDefault()
       setColWidth((w) => Math.max(MIN_COL, Math.min(MAX_COL, w - Math.sign(e.deltaY) * 2)))
     }
     el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
+
+    return () => {
+      observer.disconnect()
+      el.removeEventListener('wheel', onWheel)
+    }
   }, [])
 
   const sorted = [...steps].sort((a, b) => a.step_order - b.step_order)
@@ -353,8 +364,8 @@ function GanttChart({
         </button>
       </div>
 
-      <div className="overflow-x-auto">
-        <div style={{ minWidth: 180 + totalW + 80 }}>
+      <div className="overflow-x-auto w-full">
+        <div style={{ minWidth: 180 + totalW + 16, width: '100%' }}>
 
           {/* x-axis header */}
           <div className="flex mb-1">
