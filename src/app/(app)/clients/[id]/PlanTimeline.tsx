@@ -289,32 +289,42 @@ function GanttChart({
   steps: PlanStep[]; kickoffDate: string | null; clientId: string; canEdit: boolean
 }) {
   const [colWidth, setColWidth]   = useState(24)
+  const [fitCol, setFitCol]       = useState(24)   // auto-fit value = effective min zoom
   const [activeId, setActiveId]   = useState<string | null>(null)
   const [doneDate, setDoneDate]   = useState(today())
   const [isPending, startTransition] = useTransition()
-  const wrapperRef = useRef<HTMLDivElement>(null)
+  const wrapperRef    = useRef<HTMLDivElement>(null)
+  const userZoomedRef = useRef(false)   // true once user manually zooms in
+  const fitColRef     = useRef(24)      // mirror of fitCol for use in callbacks
 
-  // ResizeObserver keeps colWidth in sync with container width (handles initial
-  // layout settle, sidebar toggle, and window resize).
+  // ResizeObserver: auto-fit on first layout + any container resize.
+  // Only overrides colWidth if user hasn't manually zoomed in.
   useEffect(() => {
     const el = wrapperRef.current
     if (!el) return
 
     const observer = new ResizeObserver(([entry]) => {
       const available = entry.contentRect.width - 180 - 16
-      const ideal = Math.floor(available / TOTAL_DAYS)
-      setColWidth((prev) => {
-        // Only auto-fit when user hasn't manually zoomed (within ±4px of auto)
-        const auto = Math.max(MIN_COL, Math.min(MAX_COL, ideal))
-        return auto
-      })
+      const fit = Math.max(MIN_COL, Math.min(MAX_COL, Math.floor(available / TOTAL_DAYS)))
+      fitColRef.current = fit
+      setFitCol(fit)
+      if (!userZoomedRef.current) {
+        setColWidth(fit)
+      } else {
+        // If window shrinks below user zoom, clamp down
+        setColWidth((w) => Math.max(fit, w))
+      }
     })
     observer.observe(el)
 
     function onWheel(e: WheelEvent) {
       if (!e.ctrlKey) return
       e.preventDefault()
-      setColWidth((w) => Math.max(MIN_COL, Math.min(MAX_COL, w - Math.sign(e.deltaY) * 2)))
+      setColWidth((w) => {
+        const next = Math.max(fitColRef.current, Math.min(MAX_COL, w - Math.sign(e.deltaY) * 2))
+        userZoomedRef.current = next > fitColRef.current
+        return next
+      })
     }
     el.addEventListener('wheel', onWheel, { passive: false })
 
@@ -349,14 +359,14 @@ function GanttChart({
       <div className="flex items-center justify-end gap-1.5 mb-3">
         <span className="text-xs text-gray-400 mr-1">Zoom</span>
         <button
-          onClick={() => setColWidth((w) => Math.max(MIN_COL, w - 4))}
-          disabled={colWidth <= MIN_COL}
+          onClick={() => { userZoomedRef.current = colWidth - 4 > fitCol; setColWidth((w) => Math.max(fitCol, w - 4)) }}
+          disabled={colWidth <= fitCol}
           className="w-6 h-6 rounded border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-30 flex items-center justify-center"
         >
           <Minus className="w-3 h-3" />
         </button>
         <button
-          onClick={() => setColWidth((w) => Math.min(MAX_COL, w + 4))}
+          onClick={() => { userZoomedRef.current = true; setColWidth((w) => Math.min(MAX_COL, w + 4)) }}
           disabled={colWidth >= MAX_COL}
           className="w-6 h-6 rounded border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-30 flex items-center justify-center"
         >
@@ -370,7 +380,7 @@ function GanttChart({
           {/* x-axis header */}
           <div className="flex mb-1">
             <div style={{ width: 180 }} className="flex-shrink-0" />
-            <div className="relative" style={{ width: totalW, height: 50 }}>
+            <div className="relative flex-1" style={{ minWidth: totalW, height: 50 }}>
               {/* TODAY chip */}
               {todayOffset !== null && (
                 <div className="absolute top-0 z-10" style={{ left: todayOffset, transform: 'translateX(-50%)' }}>
@@ -445,10 +455,10 @@ function GanttChart({
                     {/* Track */}
                     <div
                       className={cn(
-                        'relative bg-gray-50 rounded-md overflow-visible',
+                        'relative flex-1 bg-gray-50 rounded-md overflow-visible',
                         canEdit && !isDone && 'cursor-pointer group',
                       )}
-                      style={{ width: totalW, height: 28 }}
+                      style={{ minWidth: totalW, height: 28 }}
                       onClick={() => {
                         if (!canEdit || isDone) return
                         setActiveId(isActive ? null : step.id)
