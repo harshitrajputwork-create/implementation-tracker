@@ -98,7 +98,7 @@ export default async function ClientDetailPage({
   const owner = typedClient.owner as Profile | null
 
   return (
-    <div className="p-8 max-w-7xl">
+    <div className="p-8 w-full">
       {/* Back link */}
       <Link
         href="/dashboard"
