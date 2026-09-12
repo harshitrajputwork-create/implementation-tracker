@@ -6,9 +6,10 @@ import PlanTimeline from './PlanTimeline'
 import DeviationLogSection from './DeviationLogSection'
 import HandoverSection from './HandoverSection'
 import GrowthTab from './GrowthTab'
+import ActivityLog from './ActivityLog'
 import { formatDate } from '@/lib/utils'
 import { ChevronLeft, FileText, Send } from 'lucide-react'
-import type { Client, PlanStep, DeviationLogEntry, RolloutConfirmation, Profile, UseCase, ClientUseCase } from '@/lib/types'
+import type { Client, PlanStep, DeviationLogEntry, RolloutConfirmation, Profile, UseCase, ClientUseCase, ActivityEntry } from '@/lib/types'
 import {
   IS_DEV_BYPASS, MOCK_PROFILE, getMockClient, getMockSteps,
   MOCK_DEVIATION_LOG, MOCK_ROLLOUT,
@@ -33,6 +34,7 @@ export default async function ClientDetailPage({
   let canEdit = false
   let useCases: UseCase[] = []
   let clientUseCases: ClientUseCase[] = []
+  let activityLog: ActivityEntry[] = []
 
   if (IS_DEV_BYPASS) {
     const mc = getMockClient(id)
@@ -73,8 +75,16 @@ export default async function ClientDetailPage({
     const { data: cuc } = await supabase
       .from('client_use_cases').select('*, use_case:use_cases(*)').eq('client_id', id)
 
+    const { data: actLog } = await supabase
+      .from('activity_log')
+      .select('*')
+      .eq('client_id', id)
+      .order('created_at', { ascending: false })
+      .limit(50)
+
     useCases = (uc ?? []) as UseCase[]
     clientUseCases = (cuc ?? []) as ClientUseCase[]
+    activityLog = (actLog ?? []) as ActivityEntry[]
 
     typedClient  = client as Client
     typedSteps   = (planSteps ?? []) as PlanStep[]
@@ -211,6 +221,7 @@ export default async function ClientDetailPage({
               clientId={id}
               canEdit={canEdit}
             />
+            <ActivityLog entries={activityLog} />
           </div>
 
           {/* Right: Actions */}

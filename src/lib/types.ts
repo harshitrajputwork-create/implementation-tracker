@@ -94,3 +94,13 @@ export interface ClientUseCase {
   updated_at: string
   use_case?: UseCase
 }
+
+export interface ActivityEntry {
+  id: string
+  client_id: string
+  user_id: string | null
+  user_name: string | null
+  action: string
+  detail: string | null
+  created_at: string
+}
