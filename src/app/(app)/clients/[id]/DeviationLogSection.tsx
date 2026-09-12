@@ -1,10 +1,26 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import type { DeviationLogEntry } from '@/lib/types'
-import { formatDateTime } from '@/lib/utils'
+import type { DeviationLogEntry, DeviationCause } from '@/lib/types'
+import { formatDateTime, cn } from '@/lib/utils'
 import { addDeviationEntryAction } from './actions'
 import { AlertCircle, Plus } from 'lucide-react'
+
+const CAUSE_OPTIONS: { value: DeviationCause; label: string; color: string }[] = [
+  { value: 'client_caused', label: 'Client-caused', color: 'bg-amber-100 text-amber-700' },
+  { value: 'internal',      label: 'Internal',      color: 'bg-red-100 text-red-700'    },
+  { value: 'other',         label: 'Other',          color: 'bg-gray-100 text-gray-600'  },
+]
+
+function CauseTag({ cause }: { cause: DeviationCause | null }) {
+  const cfg = CAUSE_OPTIONS.find((c) => c.value === cause)
+  if (!cfg) return null
+  return (
+    <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', cfg.color)}>
+      {cfg.label}
+    </span>
+  )
+}
 
 export default function DeviationLogSection({
   entries,
@@ -15,15 +31,19 @@ export default function DeviationLogSection({
   clientId: string
   canEdit: boolean
 }) {
-  const [note, setNote] = useState('')
+  const [note, setNote]             = useState('')
+  const [cause, setCause]           = useState<DeviationCause>('client_caused')
+  const [clientVisible, setClientVisible] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm]     = useState(false)
 
   function submit() {
     if (!note.trim()) return
     startTransition(async () => {
-      await addDeviationEntryAction(clientId, note)
+      await addDeviationEntryAction(clientId, note, cause, clientVisible)
       setNote('')
+      setCause('client_caused')
+      setClientVisible(false)
       setShowForm(false)
     })
   }
@@ -55,6 +75,31 @@ export default function DeviationLogSection({
         {/* Add form */}
         {canEdit && showForm && (
           <div className="p-4 border-b border-gray-100 bg-amber-50">
+            <div className="flex items-center gap-3 mb-3">
+              <div>
+                <label className="text-xs font-medium text-gray-600 block mb-1">Cause *</label>
+                <select
+                  value={cause}
+                  onChange={(e) => setCause(e.target.value as DeviationCause)}
+                  className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                >
+                  {CAUSE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-end gap-2 pb-0.5">
+                <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={clientVisible}
+                    onChange={(e) => setClientVisible(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Visible in Client Update
+                </label>
+              </div>
+            </div>
             <label className="text-xs font-medium text-gray-600 mb-1.5 block">
               Log a delay, blocker, or deviation
             </label>
@@ -101,7 +146,7 @@ export default function DeviationLogSection({
           <div className="divide-y divide-gray-100">
             {entries.map((entry) => (
               <div key={entry.id} className="px-5 py-4">
-                <div className="flex items-center gap-2 mb-1.5">
+                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                   <span className="text-xs font-medium text-gray-500">
                     {formatDateTime(entry.created_at)}
                   </span>
@@ -112,6 +157,10 @@ export default function DeviationLogSection({
                         {entry.author.full_name ?? entry.author.email}
                       </span>
                     </>
+                  )}
+                  {entry.cause && <CauseTag cause={entry.cause} />}
+                  {entry.client_visible && (
+                    <span className="text-xs text-blue-500 font-medium">· client-visible</span>
                   )}
                 </div>
                 <p className="text-sm text-gray-700 leading-relaxed">{entry.note}</p>

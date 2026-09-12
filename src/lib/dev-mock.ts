@@ -47,12 +47,15 @@ const baseSteps = (clientId: string, doneTill: number): PlanStep[] =>
         ? new Date(Date.now() - (doneTill - i) * 2 * 86400000).toISOString().split('T')[0]
         : null,
     notes: null,
+    notes_client_visible: false,
     created_at: '2026-09-01T09:00:00Z',
   }))
 
 export const MOCK_CLIENTS: Client[] = [
   {
     id: 'demo-client-1',
+    status_override: null,
+    last_activity_at: new Date(Date.now() - 1 * 86400000).toISOString(),
     name: 'Lenskart',
     industry: 'Retail',
     company_size: '18 stores',
@@ -70,6 +73,8 @@ export const MOCK_CLIENTS: Client[] = [
   },
   {
     id: 'demo-client-2',
+    status_override: null,
+    last_activity_at: new Date(Date.now() - 4 * 86400000).toISOString(),
     name: 'Wow Momo',
     industry: 'Food & Beverage (QSR)',
     company_size: '24 outlets',
@@ -87,6 +92,8 @@ export const MOCK_CLIENTS: Client[] = [
   },
   {
     id: 'demo-client-3',
+    status_override: 'handed_over' as const,
+    last_activity_at: '2026-08-15T09:00:00Z',
     name: 'PVR Inox',
     industry: 'Retail',
     company_size: '11 multiplexes',
@@ -104,6 +111,8 @@ export const MOCK_CLIENTS: Client[] = [
   },
   {
     id: 'demo-client-4',
+    status_override: null,
+    last_activity_at: new Date(Date.now() - 5 * 86400000).toISOString(),
     name: 'Haldiram\'s',
     industry: 'Food & Beverage (QSR)',
     company_size: '8 stores',
@@ -135,6 +144,8 @@ export const MOCK_DEVIATION_LOG: DeviationLogEntry[] = [
     client_id: 'demo-client-1',
     author_id: 'dev-user-2',
     note: 'Client SPOC (Ananya Singh) was on leave during D11. Configuration sign-off pushed by 2 days. Confirmed over email she will review by Sep 5.',
+    cause: 'client_caused',
+    client_visible: false,
     created_at: '2026-09-03T14:30:00Z',
     author: MOCK_MEMBERS[1],
   },
@@ -143,6 +154,8 @@ export const MOCK_DEVIATION_LOG: DeviationLogEntry[] = [
     client_id: 'demo-client-1',
     author_id: 'dev-user-2',
     note: 'Store data received late (D7, not D5). Checklist content was mostly standard so configuration not significantly delayed. Sales (Vikram) notified for future accounts.',
+    cause: 'client_caused',
+    client_visible: false,
     created_at: '2026-08-27T11:00:00Z',
     author: MOCK_MEMBERS[1],
   },

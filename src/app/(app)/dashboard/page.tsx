@@ -3,22 +3,15 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Client, ClientStatus } from '@/lib/types'
 import StatusBadge from '@/components/StatusBadge'
-import { formatDate, daysSince } from '@/lib/utils'
-import { Plus, Users, TrendingUp, AlertTriangle, Ban } from 'lucide-react'
+import { formatDate, daysSince, effectiveStatus } from '@/lib/utils'
+import { Plus, Users, TrendingUp, AlertTriangle, Ban, Clock } from 'lucide-react'
 import { IS_DEV_BYPASS, MOCK_PROFILE, MOCK_CLIENTS } from '@/lib/dev-mock'
+import QuickMarkDone from './QuickMarkDone'
 
 function StatCard({
-  label,
-  value,
-  icon: Icon,
-  color,
-  bg,
+  label, value, icon: Icon, color, bg,
 }: {
-  label: string
-  value: number
-  icon: React.ElementType
-  color: string
-  bg: string
+  label: string; value: number; icon: React.ElementType; color: string; bg: string
 }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center justify-between">
@@ -33,10 +26,17 @@ function StatCard({
   )
 }
 
+function getNextStep(client: Client): { id: string; name: string } | null {
+  const steps = (client.plan_steps ?? []).sort((a, b) => a.step_order - b.step_order)
+  const pending = steps.find((s) => s.status !== 'done')
+  if (!pending) return null
+  return { id: pending.id, name: pending.step_name }
+}
+
 function getCurrentStep(client: Client): { label: string; step: number | null } {
   const steps = (client.plan_steps ?? []).sort((a, b) => a.step_order - b.step_order)
   const inProgress = steps.find((s) => s.status === 'in_progress')
-  if (inProgress) return { label: `Step ${inProgress.step_order}: ${inProgress.step_name}`, step: inProgress.step_order }
+  if (inProgress) return { label: `${inProgress.step_name}`, step: inProgress.step_order }
   const done = steps.filter((s) => s.status === 'done')
   if (done.length === steps.length && steps.length > 0) return { label: 'All steps done', step: 10 }
   if (done.length > 0) {
@@ -50,10 +50,7 @@ function ProgressBar({ step }: { step: number | null }) {
   const pct = step == null ? 0 : Math.min(100, (step / 10) * 100)
   return (
     <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-      <div
-        className="h-full bg-blue-500 rounded-full transition-all"
-        style={{ width: `${pct}%` }}
-      />
+      <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
     </div>
   )
 }
@@ -72,15 +69,13 @@ export default async function DashboardPage({
     if (!user) redirect('/login')
 
     const { data: p } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
+      .from('profiles').select('*').eq('id', user.id).single()
     profile = p
 
     const { data: c } = await supabase
       .from('clients')
-      .select('*, owner:profiles!owner_id(id, full_name, email, role), plan_steps(id, status, step_order, step_name)')
+      .select(`*, owner:profiles!owner_id(id, full_name, email, role),
+               plan_steps(id, status, step_order, step_name, ideated_day_range, real_date_completed)`)
       .order('created_at', { ascending: false })
     rawClients = (c as Client[]) ?? []
   }
@@ -88,26 +83,35 @@ export default async function DashboardPage({
   const params = await searchParams
   const filter = params.filter as ClientStatus | undefined
 
-  const all = rawClients
-  const activeClients = all.filter((c) => !c.is_handed_over)
+  // Compute effective status for each client
+  const clientsWithStatus = rawClients.map((c) => {
+    const { status, isAuto } = effectiveStatus(
+      c.is_handed_over,
+      c.status_override ?? null,
+      c.kickoff_date,
+      c.plan_steps ?? [],
+    )
+    return { ...c, _effectiveStatus: status, _isAuto: isAuto }
+  })
 
+  const activeClients = clientsWithStatus.filter((c) => !c.is_handed_over)
   const displayed = filter
-    ? all.filter((c) => c.status === filter)
+    ? clientsWithStatus.filter((c) => c._effectiveStatus === filter)
     : activeClients
 
   const counts = {
-    active: activeClients.length,
-    on_track: all.filter((c) => c.status === 'on_track' && !c.is_handed_over).length,
-    at_risk: all.filter((c) => c.status === 'at_risk').length,
-    blocked: all.filter((c) => c.status === 'blocked_on_client').length,
+    active:    activeClients.length,
+    on_track:  activeClients.filter((c) => c._effectiveStatus === 'on_track').length,
+    at_risk:   clientsWithStatus.filter((c) => c._effectiveStatus === 'at_risk').length,
+    blocked:   clientsWithStatus.filter((c) => c._effectiveStatus === 'blocked_on_client').length,
   }
 
   const filterTabs = [
-    { label: 'Active', value: undefined },
-    { label: 'On Track', value: 'on_track' as ClientStatus },
-    { label: 'At Risk', value: 'at_risk' as ClientStatus },
-    { label: 'Blocked', value: 'blocked_on_client' as ClientStatus },
-    { label: 'Handed Over', value: 'handed_over' as ClientStatus },
+    { label: 'Active',       value: undefined },
+    { label: 'On Track',     value: 'on_track'          as ClientStatus },
+    { label: 'At Risk',      value: 'at_risk'            as ClientStatus },
+    { label: 'Blocked',      value: 'blocked_on_client'  as ClientStatus },
+    { label: 'Handed Over',  value: 'handed_over'        as ClientStatus },
   ]
 
   return (
@@ -133,34 +137,10 @@ export default async function DashboardPage({
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-8">
-        <StatCard
-          label="Active Clients"
-          value={counts.active}
-          icon={Users}
-          color="text-blue-600"
-          bg="bg-blue-50"
-        />
-        <StatCard
-          label="On Track"
-          value={counts.on_track}
-          icon={TrendingUp}
-          color="text-green-600"
-          bg="bg-green-50"
-        />
-        <StatCard
-          label="At Risk"
-          value={counts.at_risk}
-          icon={AlertTriangle}
-          color="text-amber-600"
-          bg="bg-amber-50"
-        />
-        <StatCard
-          label="Blocked on Client"
-          value={counts.blocked}
-          icon={Ban}
-          color="text-red-600"
-          bg="bg-red-50"
-        />
+        <StatCard label="Active Clients" value={counts.active}   icon={Users}          color="text-blue-600"  bg="bg-blue-50"  />
+        <StatCard label="On Track"        value={counts.on_track} icon={TrendingUp}     color="text-green-600" bg="bg-green-50" />
+        <StatCard label="At Risk"         value={counts.at_risk}  icon={AlertTriangle}  color="text-amber-600" bg="bg-amber-50" />
+        <StatCard label="Blocked"         value={counts.blocked}  icon={Ban}            color="text-red-600"   bg="bg-red-50"   />
       </div>
 
       {/* Filter tabs */}
@@ -202,31 +182,26 @@ export default async function DashboardPage({
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3.5">
-                  Client
-                </th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">
-                  Owner
-                </th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">
-                  Progress
-                </th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">
-                  Days In
-                </th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">
-                  Kickoff
-                </th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">
-                  Status
-                </th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3.5">Client</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">Owner</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">Progress</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">Days In</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">Last Activity</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">Status</th>
                 <th className="px-4 py-3.5" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {displayed.map((client) => {
                 const { label: stepLabel, step } = getCurrentStep(client)
-                const days = daysSince(client.kickoff_date)
+                const days       = daysSince(client.kickoff_date)
+                const lastAct    = client.last_activity_at ?? client.created_at
+                const staleDays  = daysSince(lastAct)
+                const isStale    = staleDays != null && staleDays >= 3 && !client.is_handed_over
+                const nextStep   = getNextStep(client)
+                const canDoQuick = profile?.role !== 'visitor' &&
+                  (profile?.role === 'admin' || client.owner_id === profile?.id)
+
                 return (
                   <tr key={client.id} className="hover:bg-gray-50 transition-colors group">
                     <td className="px-6 py-4">
@@ -239,31 +214,45 @@ export default async function DashboardPage({
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-600">
                       {(client.owner as { full_name?: string; email?: string } | null)?.full_name ??
-                        (client.owner as { full_name?: string; email?: string } | null)?.email ??
-                        '—'}
+                        (client.owner as { full_name?: string; email?: string } | null)?.email ?? '—'}
                     </td>
                     <td className="px-4 py-4">
-                      <p className="text-xs text-gray-500 mb-1.5 truncate max-w-[160px]">
-                        {stepLabel}
-                      </p>
-                      <ProgressBar step={step} />
+                      <p className="text-xs text-gray-500 mb-1.5 truncate max-w-[160px]">{stepLabel}</p>
+                      <div className="flex items-center gap-2">
+                        <ProgressBar step={step} />
+                        {canDoQuick && nextStep && !client.is_handed_over && (
+                          <QuickMarkDone
+                            clientId={client.id}
+                            stepId={nextStep.id}
+                            stepName={nextStep.name}
+                          />
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-600">
                       {days != null ? (
-                        <span
-                          className={days > 30 ? 'text-red-600 font-semibold' : ''}
-                        >
-                          {days}d
-                        </span>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-600">
-                      {formatDate(client.kickoff_date)}
+                        <span className={days > 30 ? 'text-red-600 font-semibold' : ''}>{days}d</span>
+                      ) : '—'}
                     </td>
                     <td className="px-4 py-4">
-                      <StatusBadge status={client.status} size="sm" />
+                      <div className="flex items-center gap-1.5">
+                        {isStale && (
+                          <Clock className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" aria-label="No activity in 3+ days" />
+                        )}
+                        <span className={`text-xs ${isStale ? 'text-amber-600 font-medium' : 'text-gray-500'}`}>
+                          {staleDays === 0 ? 'Today' :
+                           staleDays === 1 ? 'Yesterday' :
+                           staleDays != null ? `${staleDays}d ago` : '—'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-1.5">
+                        <StatusBadge status={client._effectiveStatus as ClientStatus} size="sm" />
+                        {client._isAuto && (
+                          <span className="text-xs text-gray-400" title="Auto-computed from step dates">auto</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <Link

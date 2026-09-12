@@ -5,20 +5,25 @@ import StatusBadge from '@/components/StatusBadge'
 import PlanTimeline from './PlanTimeline'
 import DeviationLogSection from './DeviationLogSection'
 import HandoverSection from './HandoverSection'
+import GrowthTab from './GrowthTab'
 import { formatDate } from '@/lib/utils'
-import { ChevronLeft, FileText } from 'lucide-react'
-import type { Client, PlanStep, DeviationLogEntry, RolloutConfirmation, Profile } from '@/lib/types'
+import { ChevronLeft, FileText, Send } from 'lucide-react'
+import type { Client, PlanStep, DeviationLogEntry, RolloutConfirmation, Profile, UseCase, ClientUseCase } from '@/lib/types'
 import {
   IS_DEV_BYPASS, MOCK_PROFILE, getMockClient, getMockSteps,
-  MOCK_DEVIATION_LOG, MOCK_ROLLOUT
+  MOCK_DEVIATION_LOG, MOCK_ROLLOUT,
 } from '@/lib/dev-mock'
 
 export default async function ClientDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ tab?: string }>
 }) {
-  const { id } = await params
+  const { id }  = await params
+  const { tab } = await searchParams
+  const activeTab = tab === 'growth' ? 'growth' : 'plan'
 
   let profile = IS_DEV_BYPASS ? MOCK_PROFILE : null
   let typedClient: Client
@@ -26,13 +31,15 @@ export default async function ClientDetailPage({
   let typedLog: DeviationLogEntry[]
   let typedRollout: RolloutConfirmation | null = null
   let canEdit = false
+  let useCases: UseCase[] = []
+  let clientUseCases: ClientUseCase[] = []
 
   if (IS_DEV_BYPASS) {
     const mc = getMockClient(id)
     if (!mc) notFound()
     typedClient = mc
-    typedSteps = getMockSteps(id)
-    typedLog = MOCK_DEVIATION_LOG.filter((e) => e.client_id === id)
+    typedSteps  = getMockSteps(id)
+    typedLog    = MOCK_DEVIATION_LOG.filter((e) => e.client_id === id)
     typedRollout = id === 'demo-client-1' ? MOCK_ROLLOUT : null
     canEdit = true
   } else {
@@ -57,13 +64,21 @@ export default async function ClientDetailPage({
       .select('*, author:profiles!author_id(id, full_name, email)')
       .eq('client_id', id).order('created_at', { ascending: false })
     const { data: rollout } = await supabase
-      .from('rollout_confirmations')
-      .select('*, set_by_profile:profiles!set_by(id, full_name, email)')
-      .eq('client_id', id).maybeSingle()
+      .from('rollout_confirmations').select('*').eq('client_id', id).maybeSingle()
 
-    typedClient = client as Client
-    typedSteps = (planSteps ?? []) as PlanStep[]
-    typedLog = (deviationLog ?? []) as DeviationLogEntry[]
+    // Growth use cases filtered by industry
+    const { data: uc } = await supabase
+      .from('use_cases').select('*')
+      .or(`industry_tag.is.null,industry_tag.eq.${client.industry ?? ''}`)
+    const { data: cuc } = await supabase
+      .from('client_use_cases').select('*, use_case:use_cases(*)').eq('client_id', id)
+
+    useCases = (uc ?? []) as UseCase[]
+    clientUseCases = (cuc ?? []) as ClientUseCase[]
+
+    typedClient  = client as Client
+    typedSteps   = (planSteps ?? []) as PlanStep[]
+    typedLog     = (deviationLog ?? []) as DeviationLogEntry[]
     typedRollout = rollout as RolloutConfirmation | null
     canEdit =
       profile?.role === 'admin' ||
@@ -118,14 +133,23 @@ export default async function ClientDetailPage({
           )}
         </div>
 
-        {/* Journey report link */}
-        <Link
-          href={`/clients/${id}/journey-report`}
-          className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium"
-        >
-          <FileText className="w-4 h-4" />
-          Journey Report
-        </Link>
+        {/* Export buttons */}
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/clients/${id}/client-update`}
+            className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors text-sm font-medium"
+          >
+            <Send className="w-4 h-4" />
+            Client Update
+          </Link>
+          <Link
+            href={`/clients/${id}/journey-report`}
+            className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium"
+          >
+            <FileText className="w-4 h-4" />
+            Journey Report
+          </Link>
+        </div>
       </div>
 
       {/* Handover banner */}
@@ -136,42 +160,69 @@ export default async function ClientDetailPage({
             This account was handed over to{' '}
             <strong>{typedClient.handed_over_to_kam}</strong> on{' '}
             {formatDate(typedClient.handover_date)}.{' '}
-            <Link
-              href={`/clients/${id}/journey-report`}
-              className="underline hover:no-underline"
-            >
+            <Link href={`/clients/${id}/journey-report`} className="underline hover:no-underline">
               View journey report
             </Link>
           </p>
         </div>
       )}
 
-      {/* Two-column layout */}
-      <div className="grid grid-cols-3 gap-8">
-        {/* Left: Plan timeline */}
-        <div className="col-span-2 space-y-8">
-          <PlanTimeline
-            steps={typedSteps}
-            clientId={id}
-            canEdit={canEdit}
-            kickoffDate={typedClient.kickoff_date}
-          />
-          <DeviationLogSection
-            entries={typedLog}
-            clientId={id}
-            canEdit={canEdit}
-          />
-        </div>
-
-        {/* Right: Actions */}
-        <div className="col-span-1">
-          <HandoverSection
-            client={typedClient}
-            rollout={typedRollout}
-            canEdit={canEdit}
-          />
-        </div>
+      {/* Tab nav */}
+      <div className="flex gap-1 mb-6 border-b border-gray-200">
+        {[
+          { value: 'plan',   label: '30-Day Plan' },
+          { value: 'growth', label: 'Growth' },
+        ].map(({ value, label }) => (
+          <Link
+            key={value}
+            href={value === 'plan' ? `/clients/${id}` : `/clients/${id}?tab=${value}`}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              activeTab === value
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {label}
+          </Link>
+        ))}
       </div>
+
+      {/* Tab content */}
+      {activeTab === 'growth' ? (
+        <GrowthTab
+          clientId={id}
+          industry={typedClient.industry}
+          useCases={useCases}
+          clientUseCases={clientUseCases}
+          canEdit={canEdit}
+        />
+      ) : (
+        <div className="grid grid-cols-3 gap-8">
+          {/* Left: Plan timeline */}
+          <div className="col-span-2 space-y-8">
+            <PlanTimeline
+              steps={typedSteps}
+              clientId={id}
+              canEdit={canEdit}
+              kickoffDate={typedClient.kickoff_date}
+            />
+            <DeviationLogSection
+              entries={typedLog}
+              clientId={id}
+              canEdit={canEdit}
+            />
+          </div>
+
+          {/* Right: Actions */}
+          <div className="col-span-1">
+            <HandoverSection
+              client={typedClient}
+              rollout={typedRollout}
+              canEdit={canEdit}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

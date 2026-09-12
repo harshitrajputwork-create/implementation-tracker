@@ -122,9 +122,11 @@ function StepRow({
     })
   }
 
+  const [clientVisibleNote, setClientVisibleNote] = useState(step.notes_client_visible ?? false)
+
   async function saveNotes() {
     setSaveState('saving')
-    await updateStepNotesAction(step.id, clientId, notesInput)
+    await updateStepNotesAction(step.id, clientId, notesInput, clientVisibleNote)
     setSaveState('saved')
     setTimeout(() => setSaveState('idle'), 2000)
   }
@@ -268,6 +270,15 @@ function StepRow({
                   {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? '✓ Saved' : 'Save'}
                 </button>
               </div>
+              <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer mt-1">
+                <input
+                  type="checkbox"
+                  checked={clientVisibleNote}
+                  onChange={(e) => setClientVisibleNote(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                Show in Client Update export
+              </label>
             </div>
           ) : (
             step.notes && (

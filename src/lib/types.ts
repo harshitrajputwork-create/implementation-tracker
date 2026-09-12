@@ -1,6 +1,7 @@
 export type Role = 'admin' | 'member' | 'visitor'
 export type ClientStatus = 'on_track' | 'at_risk' | 'blocked_on_client' | 'handed_over'
 export type StepStatus = 'not_started' | 'in_progress' | 'done'
+export type DeviationCause = 'client_caused' | 'internal' | 'other'
 
 export interface Profile {
   id: string
@@ -11,6 +12,15 @@ export interface Profile {
   created_at: string
 }
 
+export interface Invitation {
+  id: string
+  email: string
+  role: Role
+  invited_by: string | null
+  accepted: boolean
+  created_at: string
+}
+
 export interface Client {
   id: string
   name: string
@@ -18,11 +28,13 @@ export interface Client {
   company_size: string | null
   owner_id: string | null
   status: ClientStatus
+  status_override: ClientStatus | null
   kickoff_date: string | null
   handover_date: string | null
   handed_over_to_kam: string | null
   is_handed_over: boolean
   notes: string | null
+  last_activity_at: string | null
   created_at: string
   created_by: string | null
   owner?: Profile | null
@@ -39,6 +51,7 @@ export interface PlanStep {
   status: StepStatus
   real_date_completed: string | null
   notes: string | null
+  notes_client_visible: boolean
   created_at: string
 }
 
@@ -47,6 +60,8 @@ export interface DeviationLogEntry {
   client_id: string
   author_id: string | null
   note: string
+  cause: DeviationCause | null
+  client_visible: boolean
   created_at: string
   author?: Profile | null
 }
@@ -59,4 +74,23 @@ export interface RolloutConfirmation {
   notes: string | null
   created_at: string
   set_by_profile?: Profile | null
+}
+
+export interface UseCase {
+  id: string
+  title: string
+  description: string | null
+  industry_tag: string | null
+  link: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface ClientUseCase {
+  id: string
+  client_id: string
+  use_case_id: string
+  is_using: boolean
+  updated_at: string
+  use_case?: UseCase
 }
