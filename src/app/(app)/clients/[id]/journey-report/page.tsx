@@ -56,7 +56,7 @@ export default async function JourneyReportPage({
     typedLog = (deviationLog ?? []) as DeviationLogEntry[]
     typedRollout = rollout as RolloutConfirmation | null
   }
-  const owner = client.owner as Profile | null
+  const owner = typedClient.owner as Profile | null
 
   const doneSteps = typedSteps.filter((s) => s.status === 'done').length
   const generatedOn = new Date().toLocaleDateString('en-GB', {
