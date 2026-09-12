@@ -4,7 +4,8 @@ import { PLAN_TEMPLATE } from '@/lib/plan-template'
 import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import { IS_DEV_BYPASS, MOCK_PROFILE, MOCK_MEMBERS } from '@/lib/dev-mock'
+import { IS_DEV_BYPASS, MOCK_MEMBERS } from '@/lib/dev-mock'
+import type { Profile } from '@/lib/types'
 
 const INDUSTRIES = [
   'Retail',
@@ -98,7 +99,7 @@ export default async function NewClientPage() {
       .select('id, full_name, email, role')
       .in('role', ['admin', 'member'])
       .order('full_name')
-    members = m ?? []
+    members = (m ?? []) as Profile[]
   }
 
   const today = new Date().toISOString().split('T')[0]
