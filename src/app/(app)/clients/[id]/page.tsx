@@ -207,9 +207,9 @@ export default async function ClientDetailPage({
           canEdit={canEdit}
         />
       ) : (
-        <div className="grid grid-cols-3 gap-8">
-          {/* Left: Plan timeline */}
-          <div className="col-span-2 space-y-8">
+        <div className="flex gap-8 items-start">
+          {/* Left: Plan timeline — fills all remaining space */}
+          <div className="flex-1 min-w-0 space-y-8">
             <PlanTimeline
               steps={typedSteps}
               clientId={id}
@@ -224,8 +224,8 @@ export default async function ClientDetailPage({
             <ActivityLog entries={activityLog} />
           </div>
 
-          {/* Right: Actions */}
-          <div className="col-span-1">
+          {/* Right: Actions — fixed width */}
+          <div className="w-72 flex-shrink-0">
             <HandoverSection
               client={typedClient}
               rollout={typedRollout}
