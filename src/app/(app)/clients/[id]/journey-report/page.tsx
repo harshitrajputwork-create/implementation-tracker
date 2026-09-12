@@ -1,14 +1,49 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
-import { formatDate, formatDateTime } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
 import type { Client, PlanStep, DeviationLogEntry, RolloutConfirmation, Profile } from '@/lib/types'
 import { IS_DEV_BYPASS, getMockClient, getMockSteps, MOCK_DEVIATION_LOG, MOCK_ROLLOUT } from '@/lib/dev-mock'
+import PrintButton from './PrintButton'
 
 const stepStatusLabel: Record<string, string> = {
   not_started: 'Not started',
   in_progress: 'In progress',
   done: 'Done',
+}
+
+function parseDayRange(range: string): { startDay: number; endDay: number } {
+  const clean = range.replace(/D/g, '').replace('–', '-').replace('—', '-')
+  if (clean.includes('-')) {
+    const parts = clean.split('-').map((s) => parseInt(s.trim()))
+    return { startDay: parts[0], endDay: parts[1] }
+  }
+  const day = parseInt(clean)
+  return { startDay: day, endDay: day }
+}
+
+function addDays(dateStr: string, days: number): Date {
+  const d = new Date(dateStr)
+  d.setDate(d.getDate() + days)
+  return d
+}
+
+function fmtShort(d: Date): string {
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
+
+function stepDateRange(kickoffDate: string, ideatedDayRange: string): string {
+  const { startDay, endDay } = parseDayRange(ideatedDayRange)
+  const s = fmtShort(addDays(kickoffDate, startDay - 1))
+  const e = fmtShort(addDays(kickoffDate, endDay - 1))
+  return startDay === endDay ? s : `${s} – ${e}`
+}
+
+function deviationDays(kickoffDate: string, ideatedDayRange: string, realDate: string): number {
+  const { endDay } = parseDayRange(ideatedDayRange)
+  const ideal = addDays(kickoffDate, endDay - 1).getTime()
+  const actual = new Date(realDate).getTime()
+  return Math.round((actual - ideal) / (1000 * 60 * 60 * 24))
 }
 
 export default async function JourneyReportPage({
@@ -32,32 +67,43 @@ export default async function JourneyReportPage({
     typedRollout = id === 'demo-client-1' ? MOCK_ROLLOUT : null
   } else {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
     const { data: client } = await supabase
-      .from('clients').select('*, owner:profiles!owner_id(id, full_name, email)')
-      .eq('id', id).single()
+      .from('clients')
+      .select('*, owner:profiles!owner_id(id, full_name, email)')
+      .eq('id', id)
+      .single()
     if (!client) notFound()
 
     const { data: planSteps } = await supabase
-      .from('plan_steps').select('*').eq('client_id', id).order('step_order')
+      .from('plan_steps')
+      .select('*')
+      .eq('client_id', id)
+      .order('step_order')
+
     const { data: deviationLog } = await supabase
       .from('deviation_log')
       .select('*, author:profiles!author_id(id, full_name, email)')
-      .eq('client_id', id).order('created_at', { ascending: true })
+      .eq('client_id', id)
+      .order('created_at', { ascending: true })
+
     const { data: rollout } = await supabase
       .from('rollout_confirmations')
-      .select('*, set_by_profile:profiles!set_by(id, full_name, email)')
-      .eq('client_id', id).maybeSingle()
+      .select('*')
+      .eq('client_id', id)
+      .maybeSingle()
 
     typedClient = client as Client
     typedSteps = (planSteps ?? []) as PlanStep[]
     typedLog = (deviationLog ?? []) as DeviationLogEntry[]
     typedRollout = rollout as RolloutConfirmation | null
   }
-  const owner = typedClient.owner as Profile | null
 
+  const owner = typedClient.owner as Profile | null
   const doneSteps = typedSteps.filter((s) => s.status === 'done').length
   const generatedOn = new Date().toLocaleDateString('en-GB', {
     day: 'numeric',
@@ -67,7 +113,7 @@ export default async function JourneyReportPage({
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Print controls — hidden when printing */}
+      {/* Print controls */}
       <div className="no-print bg-gray-900 text-white px-8 py-4 flex items-center justify-between">
         <Link
           href={`/clients/${id}`}
@@ -75,12 +121,7 @@ export default async function JourneyReportPage({
         >
           ← Back to client
         </Link>
-        <button
-          onClick={() => typeof window !== 'undefined' && window.print()}
-          className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
-        >
-          Print / Save as PDF
-        </button>
+        <PrintButton />
       </div>
 
       {/* Report content */}
@@ -143,55 +184,72 @@ export default async function JourneyReportPage({
           <table className="w-full border border-gray-200 rounded-xl overflow-hidden">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3 w-20">
-                  Ideated
-                </th>
-                <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3">
-                  Step
-                </th>
-                <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3 w-28">
-                  Status
-                </th>
-                <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3 w-32">
-                  Completed on
-                </th>
+                <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3 w-16">Day</th>
+                <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3 w-32">Target dates</th>
+                <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3">Step</th>
+                <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3 w-24">Status</th>
+                <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3 w-28">Completed</th>
+                <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3 w-20">Deviation</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {typedSteps.map((step) => (
-                <tr
-                  key={step.id}
-                  className={step.status === 'done' ? 'bg-green-50/50' : ''}
-                >
-                  <td className="px-4 py-3 text-xs font-mono text-gray-400">
-                    {step.ideated_day_range}
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="text-sm font-medium text-gray-800">{step.step_name}</p>
-                    {step.notes && (
-                      <p className="text-xs text-gray-500 mt-0.5">{step.notes}</p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`text-xs font-medium ${
-                        step.status === 'done'
-                          ? 'text-green-600'
-                          : step.status === 'in_progress'
-                          ? 'text-blue-600'
-                          : 'text-gray-400'
-                      }`}
-                    >
-                      {stepStatusLabel[step.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {step.real_date_completed
-                      ? formatDate(step.real_date_completed)
-                      : '—'}
-                  </td>
-                </tr>
-              ))}
+              {typedSteps.map((step) => {
+                const dev =
+                  step.status === 'done' && step.real_date_completed && typedClient.kickoff_date
+                    ? deviationDays(typedClient.kickoff_date, step.ideated_day_range, step.real_date_completed)
+                    : null
+
+                return (
+                  <tr
+                    key={step.id}
+                    className={step.status === 'done' ? 'bg-green-50/50' : ''}
+                  >
+                    <td className="px-4 py-3 text-xs font-mono text-gray-400">
+                      {step.ideated_day_range}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-500">
+                      {typedClient.kickoff_date
+                        ? stepDateRange(typedClient.kickoff_date, step.ideated_day_range)
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-sm font-medium text-gray-800">{step.step_name}</p>
+                      {step.notes && (
+                        <p className="text-xs text-gray-500 mt-0.5">{step.notes}</p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`text-xs font-medium ${
+                          step.status === 'done'
+                            ? 'text-green-600'
+                            : step.status === 'in_progress'
+                            ? 'text-blue-600'
+                            : 'text-gray-400'
+                        }`}
+                      >
+                        {stepStatusLabel[step.status]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {step.real_date_completed ? formatDate(step.real_date_completed) : '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {dev !== null ? (
+                        <span
+                          className={`text-xs font-semibold ${
+                            dev === 0 ? 'text-green-600' : dev > 0 ? 'text-red-600' : 'text-blue-600'
+                          }`}
+                        >
+                          {dev === 0 ? 'On time' : dev > 0 ? `+${dev}d` : `${dev}d`}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -202,14 +260,19 @@ export default async function JourneyReportPage({
             <h2 className="text-lg font-bold text-gray-900 mb-4">Deviation Log</h2>
             <div className="space-y-3">
               {typedLog.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="border border-gray-200 rounded-xl px-5 py-4"
-                >
+                <div key={entry.id} className="border border-gray-200 rounded-xl px-5 py-4">
                   <p className="text-xs text-gray-400 mb-1.5">
-                    {formatDateTime(entry.created_at)}
+                    {new Date(entry.created_at).toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
                     {entry.author && (
-                      <> · {(entry.author as Profile).full_name ?? (entry.author as Profile).email}</>
+                      <>
+                        {' '}
+                        ·{' '}
+                        {(entry.author as Profile).full_name ?? (entry.author as Profile).email}
+                      </>
                     )}
                   </p>
                   <p className="text-sm text-gray-700">{entry.note}</p>

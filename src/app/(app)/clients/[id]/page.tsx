@@ -154,6 +154,7 @@ export default async function ClientDetailPage({
             steps={typedSteps}
             clientId={id}
             canEdit={canEdit}
+            kickoffDate={typedClient.kickoff_date}
           />
           <DeviationLogSection
             entries={typedLog}
