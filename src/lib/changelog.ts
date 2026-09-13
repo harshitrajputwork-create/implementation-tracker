@@ -6,6 +6,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-09-13',
+    version: 'v1.5',
+    changes: [
+      'New client fields: Ticket Size (Small/Medium/Large/XL), Sales SPOC, Country, Modules',
+      'Dashboard: new Country, Ticket Size, SPOC columns; clickable rows; multi-select filters',
+      'Client detail: edit all metadata via single "Edit details" button (modal)',
+      'Admin config: manage Sales SPOC, Country, and Module dropdown values',
+      'Sidebar: scrollable client list for direct navigation to any client',
+      'Admin-only section in sidebar (Team, Use Cases, Configuration) pinned at bottom',
+      'Global step template config at /config — defaults applied to every new client',
+    ],
+  },
+  {
     date: '2026-09-12',
     version: 'v1.1',
     changes: [

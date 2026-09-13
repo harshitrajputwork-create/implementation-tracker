@@ -58,3 +58,28 @@ export async function reorderTemplateStepsAction(ids: string[]) {
   )
   revalidatePath('/config')
 }
+
+export async function addConfigOptionAction(configKey: string, label: string) {
+  const supabase = await assertAdmin()
+  const { data: rows } = await supabase
+    .from('config_options')
+    .select('sort_order')
+    .eq('config_key', configKey)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+  const nextOrder = rows && rows.length > 0 ? rows[0].sort_order + 1 : 1
+  await supabase.from('config_options').insert({ config_key: configKey, label: label.trim(), sort_order: nextOrder })
+  revalidatePath('/config')
+}
+
+export async function updateConfigOptionAction(id: string, label: string) {
+  const supabase = await assertAdmin()
+  await supabase.from('config_options').update({ label: label.trim() }).eq('id', id)
+  revalidatePath('/config')
+}
+
+export async function deleteConfigOptionAction(id: string) {
+  const supabase = await assertAdmin()
+  await supabase.from('config_options').delete().eq('id', id)
+  revalidatePath('/config')
+}

@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { IS_DEV_BYPASS, MOCK_MEMBERS } from '@/lib/dev-mock'
-import type { Profile } from '@/lib/types'
+import type { Profile, ConfigOption } from '@/lib/types'
 
 const INDUSTRIES = [
   'Retail',
@@ -31,6 +31,10 @@ async function createClientAction(formData: FormData) {
   const owner_id = formData.get('owner_id') as string
   const kickoff_date = formData.get('kickoff_date') as string
   const notes = formData.get('notes') as string
+  const ticket_size = formData.get('ticket_size') as string
+  const sales_spoc = formData.get('sales_spoc') as string
+  const country = formData.get('country') as string
+  const modules = formData.getAll('modules') as string[]
 
   if (IS_DEV_BYPASS) {
     // In dev mode, simulate redirect to a mock client
@@ -52,6 +56,10 @@ async function createClientAction(formData: FormData) {
       owner_id: owner_id || user.id,
       kickoff_date: kickoff_date || null,
       notes: notes || null,
+      ticket_size: ticket_size || null,
+      sales_spoc: sales_spoc || null,
+      country: country || null,
+      modules: modules.length > 0 ? modules : null,
       created_by: user.id,
     })
     .select()
@@ -82,9 +90,18 @@ async function createClientAction(formData: FormData) {
   redirect(`/clients/${client.id}`)
 }
 
+const TICKET_SIZES = ['Small', 'Medium', 'Large', 'XL']
+const TICKET_SIZE_COLORS: Record<string, string> = {
+  Small:  'bg-red-100 text-red-700 border-red-200',
+  Medium: 'bg-amber-100 text-amber-700 border-amber-200',
+  Large:  'bg-green-100 text-green-700 border-green-200',
+  XL:     'bg-teal-600 text-white border-teal-600',
+}
+
 export default async function NewClientPage() {
   let userId = 'dev-user-1'
   let members = MOCK_MEMBERS
+  let configOptions: ConfigOption[] = []
 
   if (!IS_DEV_BYPASS) {
     const supabase = await createClient()
@@ -102,15 +119,20 @@ export default async function NewClientPage() {
 
     if (profile?.role === 'visitor') redirect('/dashboard')
 
-    const { data: m } = await supabase
-      .from('profiles')
-      .select('id, full_name, email, role')
-      .in('role', ['admin', 'member'])
-      .order('full_name')
+    const [{ data: m }, { data: opts }] = await Promise.all([
+      supabase.from('profiles').select('id, full_name, email, role').in('role', ['admin', 'member']).order('full_name'),
+      supabase.from('config_options').select('*').order('sort_order'),
+    ])
     members = (m ?? []) as Profile[]
+    configOptions = (opts ?? []) as ConfigOption[]
   }
 
+  const spocOptions    = configOptions.filter((o) => o.config_key === 'sales_spoc')
+  const countryOptions = configOptions.filter((o) => o.config_key === 'country')
+  const moduleOptions  = configOptions.filter((o) => o.config_key === 'module')
   const today = new Date().toISOString().split('T')[0]
+
+  const inputCls = 'w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white'
 
   return (
     <div className="p-8 max-w-2xl">
@@ -134,80 +156,95 @@ export default async function NewClientPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             Client name <span className="text-red-500">*</span>
           </label>
-          <input
-            name="name"
-            required
-            placeholder="e.g. Lenskart, Wow Momo, PVR Inox"
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-          />
+          <input name="name" required placeholder="e.g. Lenskart, Wow Momo, PVR Inox" className={inputCls.replace('bg-white', 'placeholder-gray-400 bg-white')} />
         </div>
+
+        {/* Ticket size */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Ticket size</label>
+          <div className="flex gap-2 flex-wrap">
+            {TICKET_SIZES.map((s) => (
+              <label key={s} className="cursor-pointer">
+                <input type="radio" name="ticket_size" value={s} className="sr-only peer" />
+                <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all peer-checked:ring-2 peer-checked:ring-offset-1 peer-checked:ring-blue-400 ${TICKET_SIZE_COLORS[s]} cursor-pointer`}>
+                  {s}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Sales SPOC + Country */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Sales SPOC</label>
+            <select name="sales_spoc" className={inputCls}>
+              <option value="">— none —</option>
+              {spocOptions.map((o) => <option key={o.id} value={o.label}>{o.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Country</label>
+            <select name="country" className={inputCls}>
+              <option value="">— none —</option>
+              {countryOptions.map((o) => <option key={o.id} value={o.label}>{o.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Modules */}
+        {moduleOptions.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Modules</label>
+            <div className="flex gap-2 flex-wrap">
+              {moduleOptions.map((o) => (
+                <label key={o.id} className="cursor-pointer">
+                  <input type="checkbox" name="modules" value={o.label} className="sr-only peer" />
+                  <span className="text-xs font-medium px-2.5 py-1 rounded-full border border-gray-200 bg-gray-50 text-gray-600 cursor-pointer transition-all peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600">
+                    {o.label}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <hr className="border-gray-100" />
 
         {/* Industry */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Industry
-          </label>
-          <select
-            name="industry"
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
-          >
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Industry</label>
+          <select name="industry" className={inputCls}>
             <option value="">Select industry…</option>
-            {INDUSTRIES.map((ind) => (
-              <option key={ind} value={ind}>
-                {ind}
-              </option>
-            ))}
+            {INDUSTRIES.map((ind) => <option key={ind} value={ind}>{ind}</option>)}
           </select>
         </div>
 
         {/* Company size */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Company size (stores / outlets)
-          </label>
-          <input
-            name="company_size"
-            placeholder="e.g. 12 stores"
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-          />
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Company size (stores / outlets)</label>
+          <input name="company_size" placeholder="e.g. 12 stores" className={inputCls.replace('bg-white', 'placeholder-gray-400 bg-white')} />
         </div>
 
         {/* Owner */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Implementation owner
-          </label>
-          <select
-            name="owner_id"
-            defaultValue={userId}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
-          >
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Implementation owner</label>
+          <select name="owner_id" defaultValue={userId} className={inputCls}>
             {members?.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.full_name ?? m.email}{m.id === userId ? ' (you)' : ''}
-              </option>
+              <option key={m.id} value={m.id}>{m.full_name ?? m.email}{m.id === userId ? ' (you)' : ''}</option>
             ))}
           </select>
         </div>
 
         {/* Kickoff date */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Kickoff date (Day 1)
-          </label>
-          <input
-            name="kickoff_date"
-            type="date"
-            defaultValue={today}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-          />
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Kickoff date (Day 1)</label>
+          <input name="kickoff_date" type="date" defaultValue={today} className={inputCls} />
         </div>
 
         {/* Notes */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Notes (optional)
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes (optional)</label>
           <textarea
             name="notes"
             rows={3}
@@ -223,10 +260,7 @@ export default async function NewClientPage() {
           >
             Create client & open plan
           </button>
-          <Link
-            href="/dashboard"
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium"
-          >
+          <Link href="/dashboard" className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium">
             Cancel
           </Link>
         </div>

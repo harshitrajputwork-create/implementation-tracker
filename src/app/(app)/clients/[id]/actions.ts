@@ -186,3 +186,29 @@ export async function updateClientNotesAction(clientId: string, notes: string) {
   if (user) await logAction(supabase, clientId, user.id, 'updated client notes')
   revalidatePath(`/clients/${clientId}`)
 }
+
+export async function updateClientMetaAction(
+  clientId: string,
+  fields: {
+    name?: string
+    industry?: string | null
+    company_size?: string | null
+    owner_id?: string | null
+    kickoff_date?: string | null
+    notes?: string | null
+    ticket_size?: string | null
+    sales_spoc?: string | null
+    country?: string | null
+    modules?: string[]
+  },
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  await supabase.from('clients').update(fields).eq('id', clientId)
+
+  if (user) await logAction(supabase, clientId, user.id, 'updated client details')
+  revalidatePath(`/clients/${clientId}`)
+  revalidatePath('/dashboard')
+}

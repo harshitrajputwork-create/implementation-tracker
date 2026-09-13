@@ -7,9 +7,10 @@ import DeviationLogSection from './DeviationLogSection'
 import HandoverSection from './HandoverSection'
 import GrowthTab from './GrowthTab'
 import ActivityLog from './ActivityLog'
+import ClientMetaEditor, { TicketSizeBadge } from './ClientMetaEditor'
 import { formatDate } from '@/lib/utils'
-import { ChevronLeft, FileText, Send } from 'lucide-react'
-import type { Client, PlanStep, DeviationLogEntry, RolloutConfirmation, Profile, UseCase, ClientUseCase, ActivityEntry } from '@/lib/types'
+import { ChevronLeft, FileText, Send, MapPin, User2, Package } from 'lucide-react'
+import type { Client, PlanStep, DeviationLogEntry, RolloutConfirmation, Profile, UseCase, ClientUseCase, ActivityEntry, ConfigOption } from '@/lib/types'
 import {
   IS_DEV_BYPASS, MOCK_PROFILE, getMockClient, getMockSteps,
   MOCK_DEVIATION_LOG, MOCK_ROLLOUT,
@@ -35,6 +36,8 @@ export default async function ClientDetailPage({
   let useCases: UseCase[] = []
   let clientUseCases: ClientUseCase[] = []
   let activityLog: ActivityEntry[] = []
+  let members: Profile[] = []
+  let configOptions: ConfigOption[] = []
 
   if (IS_DEV_BYPASS) {
     const mc = getMockClient(id)
@@ -82,9 +85,16 @@ export default async function ClientDetailPage({
       .order('created_at', { ascending: false })
       .limit(50)
 
+    const { data: mem } = await supabase
+      .from('profiles').select('id, full_name, email, role').in('role', ['admin', 'member']).order('full_name')
+    const { data: opts } = await supabase
+      .from('config_options').select('*').order('sort_order')
+
     useCases = (uc ?? []) as UseCase[]
     clientUseCases = (cuc ?? []) as ClientUseCase[]
     activityLog = (actLog ?? []) as ActivityEntry[]
+    members = (mem ?? []) as Profile[]
+    configOptions = (opts ?? []) as ConfigOption[]
 
     typedClient  = client as Client
     typedSteps   = (planSteps ?? []) as PlanStep[]
@@ -110,37 +120,39 @@ export default async function ClientDetailPage({
 
       {/* Client header */}
       <div className="flex items-start justify-between mb-8">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
             <h1 className="text-2xl font-bold text-gray-900">{typedClient.name}</h1>
             <StatusBadge status={typedClient.status} />
+            {typedClient.ticket_size && <TicketSizeBadge size={typedClient.ticket_size} />}
           </div>
-          <div className="flex items-center gap-4 text-sm text-gray-500">
+          <div className="flex items-center gap-3 text-sm text-gray-500 flex-wrap">
             {typedClient.industry && <span>{typedClient.industry}</span>}
-            {typedClient.industry && typedClient.kickoff_date && (
-              <span className="text-gray-300">·</span>
-            )}
-            {typedClient.kickoff_date && (
-              <span>Kickoff {formatDate(typedClient.kickoff_date)}</span>
-            )}
-            {owner && (
-              <>
-                <span className="text-gray-300">·</span>
-                <span>
-                  Owner: <span className="font-medium text-gray-700">{owner.full_name ?? owner.email}</span>
-                </span>
-              </>
-            )}
-            {typedClient.company_size && (
-              <>
-                <span className="text-gray-300">·</span>
-                <span>{typedClient.company_size}</span>
-              </>
-            )}
+            {typedClient.company_size && <><span className="text-gray-300">·</span><span>{typedClient.company_size}</span></>}
+            {typedClient.kickoff_date && <><span className="text-gray-300">·</span><span>Kickoff {formatDate(typedClient.kickoff_date)}</span></>}
+            {owner && <><span className="text-gray-300">·</span><span className="flex items-center gap-1"><User2 className="w-3.5 h-3.5" />{owner.full_name ?? owner.email}</span></>}
+            {typedClient.sales_spoc && <><span className="text-gray-300">·</span><span>Sales: {typedClient.sales_spoc}</span></>}
+            {typedClient.country && <><span className="text-gray-300">·</span><span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{typedClient.country}</span></>}
           </div>
+          {typedClient.modules && typedClient.modules.length > 0 && (
+            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+              <Package className="w-3.5 h-3.5 text-gray-400" />
+              {typedClient.modules.map((m) => (
+                <span key={m} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">{m}</span>
+              ))}
+            </div>
+          )}
           {typedClient.notes && (
             <p className="text-sm text-gray-500 mt-2 max-w-xl">{typedClient.notes}</p>
           )}
+          <div className="mt-3">
+            <ClientMetaEditor
+              client={typedClient}
+              members={members}
+              configOptions={configOptions}
+              canEdit={canEdit}
+            />
+          </div>
         </div>
 
         {/* Export buttons */}

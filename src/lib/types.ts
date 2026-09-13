@@ -37,8 +37,20 @@ export interface Client {
   last_activity_at: string | null
   created_at: string
   created_by: string | null
+  ticket_size: string | null
+  sales_spoc: string | null
+  country: string | null
+  modules: string[] | null
   owner?: Profile | null
   plan_steps?: PlanStep[]
+}
+
+export interface ConfigOption {
+  id: string
+  config_key: string
+  label: string
+  sort_order: number
+  created_at: string
 }
 
 export interface PlanStep {

@@ -1,0 +1,223 @@
+'use client'
+
+import { useState, useTransition } from 'react'
+import { Pencil, Check, X } from 'lucide-react'
+import { updateClientMetaAction } from './actions'
+import type { Client, Profile, ConfigOption } from '@/lib/types'
+
+const TICKET_SIZE_CFG: Record<string, { label: string; color: string }> = {
+  Small:  { label: 'Small',  color: 'bg-red-100 text-red-700 border-red-200' },
+  Medium: { label: 'Medium', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+  Large:  { label: 'Large',  color: 'bg-green-100 text-green-700 border-green-200' },
+  XL:     { label: 'XL',     color: 'bg-teal-600 text-white border-teal-600' },
+}
+
+export function TicketSizeBadge({ size }: { size: string | null }) {
+  if (!size) return null
+  const cfg = TICKET_SIZE_CFG[size]
+  if (!cfg) return <span className="text-sm text-gray-600">{size}</span>
+  return (
+    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${cfg.color}`}>
+      {cfg.label}
+    </span>
+  )
+}
+
+interface Props {
+  client: Client
+  members: Profile[]
+  configOptions: ConfigOption[]
+  canEdit: boolean
+}
+
+export default function ClientMetaEditor({ client, members, configOptions, canEdit }: Props) {
+  const [open, setOpen]       = useState(false)
+  const [isPending, start]    = useTransition()
+
+  const [name,       setName]       = useState(client.name)
+  const [industry,   setIndustry]   = useState(client.industry ?? '')
+  const [size,       setSize]       = useState(client.company_size ?? '')
+  const [ownerId,    setOwnerId]    = useState(client.owner_id ?? '')
+  const [kickoff,    setKickoff]    = useState(client.kickoff_date ?? '')
+  const [notes,      setNotes]      = useState(client.notes ?? '')
+  const [ticketSize, setTicketSize] = useState(client.ticket_size ?? '')
+  const [spoc,       setSpoc]       = useState(client.sales_spoc ?? '')
+  const [country,    setCountry]    = useState(client.country ?? '')
+  const [modules,    setModules]    = useState<string[]>(client.modules ?? [])
+
+  const spocOptions    = configOptions.filter((o) => o.config_key === 'sales_spoc')
+  const countryOptions = configOptions.filter((o) => o.config_key === 'country')
+  const moduleOptions  = configOptions.filter((o) => o.config_key === 'module')
+
+  function toggleModule(mod: string) {
+    setModules((prev) =>
+      prev.includes(mod) ? prev.filter((m) => m !== mod) : [...prev, mod],
+    )
+  }
+
+  function save() {
+    start(async () => {
+      await updateClientMetaAction(client.id, {
+        name: name.trim() || client.name,
+        industry: industry || null,
+        company_size: size || null,
+        owner_id: ownerId || null,
+        kickoff_date: kickoff || null,
+        notes: notes || null,
+        ticket_size: ticketSize || null,
+        sales_spoc: spoc || null,
+        country: country || null,
+        modules,
+      })
+      setOpen(false)
+    })
+  }
+
+  if (!canEdit) return null
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-gray-700 transition-colors"
+      >
+        <Pencil className="w-3 h-3" />
+        Edit details
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h2 className="font-semibold text-gray-900">Edit client details</h2>
+              <button onClick={() => setOpen(false)} className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              {/* Name */}
+              <Field label="Client name">
+                <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
+              </Field>
+
+              {/* Ticket Size */}
+              <Field label="Ticket size">
+                <div className="flex gap-2 flex-wrap">
+                  {['Small', 'Medium', 'Large', 'XL'].map((s) => {
+                    const cfg = TICKET_SIZE_CFG[s]
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setTicketSize(ticketSize === s ? '' : s)}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
+                          ticketSize === s ? cfg.color : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    )
+                  })}
+                </div>
+              </Field>
+
+              {/* Sales SPOC + Country row */}
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Sales SPOC">
+                  <select value={spoc} onChange={(e) => setSpoc(e.target.value)} className={inputCls}>
+                    <option value="">— none —</option>
+                    {spocOptions.map((o) => <option key={o.id} value={o.label}>{o.label}</option>)}
+                  </select>
+                </Field>
+                <Field label="Country">
+                  <select value={country} onChange={(e) => setCountry(e.target.value)} className={inputCls}>
+                    <option value="">— none —</option>
+                    {countryOptions.map((o) => <option key={o.id} value={o.label}>{o.label}</option>)}
+                  </select>
+                </Field>
+              </div>
+
+              {/* Modules */}
+              <Field label="Modules">
+                <div className="flex gap-1.5 flex-wrap">
+                  {moduleOptions.map((o) => (
+                    <button
+                      key={o.id}
+                      type="button"
+                      onClick={() => toggleModule(o.label)}
+                      className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-all ${
+                        modules.includes(o.label)
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+
+              <hr className="border-gray-100" />
+
+              {/* Industry + Size */}
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Industry">
+                  <input value={industry} onChange={(e) => setIndustry(e.target.value)} className={inputCls} placeholder="e.g. Food & Beverage" />
+                </Field>
+                <Field label="Company size">
+                  <input value={size} onChange={(e) => setSize(e.target.value)} className={inputCls} placeholder="e.g. 12 stores" />
+                </Field>
+              </div>
+
+              {/* Owner + Kickoff */}
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Implementation owner">
+                  <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)} className={inputCls}>
+                    <option value="">— unassigned —</option>
+                    {members.map((m) => (
+                      <option key={m.id} value={m.id}>{m.full_name ?? m.email}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Kickoff date">
+                  <input type="date" value={kickoff} onChange={(e) => setKickoff(e.target.value)} className={inputCls} />
+                </Field>
+              </div>
+
+              {/* Notes */}
+              <Field label="Notes">
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={`${inputCls} resize-none`} />
+              </Field>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
+              <button onClick={() => setOpen(false)} className="px-4 py-2 text-sm text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={save}
+                disabled={isPending}
+                className="flex items-center gap-1.5 px-5 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                <Check className="w-4 h-4" />
+                {isPending ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+const inputCls = 'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white'
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
+      {children}
+    </div>
+  )
+}

@@ -2,7 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Settings } from 'lucide-react'
 import ConfigEditor from './ConfigEditor'
+import ConfigOptionsEditor from './ConfigOptionsEditor'
 import { PLAN_TEMPLATE } from '@/lib/plan-template'
+import type { ConfigOption } from '@/lib/types'
 
 export default async function ConfigPage() {
   const supabase = await createClient()
@@ -17,10 +19,10 @@ export default async function ConfigPage() {
 
   if (profile?.role !== 'admin') redirect('/dashboard')
 
-  const { data: rows } = await supabase
-    .from('step_templates')
-    .select('*')
-    .order('step_order')
+  const [{ data: rows }, { data: opts }] = await Promise.all([
+    supabase.from('step_templates').select('*').order('step_order'),
+    supabase.from('config_options').select('*').order('sort_order'),
+  ])
 
   // Fall back to hardcoded template if table is empty (migration not run yet)
   const steps = rows && rows.length > 0
@@ -32,6 +34,8 @@ export default async function ConfigPage() {
         ideated_day_range: s.ideated_day_range,
         description: s.description,
       }))
+
+  const configOptions = (opts ?? []) as ConfigOption[]
 
   return (
     <div className="p-8 max-w-3xl">
@@ -45,7 +49,28 @@ export default async function ConfigPage() {
         </div>
       </div>
 
-      <div className="mt-8">
+      {/* Dropdown options */}
+      <div className="mt-8 mb-10">
+        <div className="mb-5">
+          <h2 className="text-base font-semibold text-gray-900">Dropdown Options</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Values available in the Sales SPOC, Country, and Modules selectors when creating or editing a client.
+          </p>
+        </div>
+
+        {configOptions.length === 0 && (
+          <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+            <strong>Migration not run yet.</strong> Run <code className="font-mono bg-amber-100 px-1 rounded">005_client_metadata.sql</code> in Supabase SQL Editor to enable editing.
+          </div>
+        )}
+
+        <ConfigOptionsEditor initialOptions={configOptions} />
+      </div>
+
+      <hr className="border-gray-200 mb-10" />
+
+      {/* Step template */}
+      <div>
         <div className="mb-5">
           <h2 className="text-base font-semibold text-gray-900">Default 30-Day Plan Template</h2>
           <p className="text-sm text-gray-500 mt-1">
