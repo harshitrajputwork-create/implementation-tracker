@@ -16,7 +16,9 @@ interface EnrichedClient extends Client {
 
 interface Props {
   clients: EnrichedClient[]
-  canQuick: (c: EnrichedClient) => boolean
+  isAdmin: boolean
+  isVisitor: boolean
+  userId: string | null
 }
 
 type FilterKey = 'status' | 'country' | 'ticket_size' | 'sales_spoc'
@@ -136,7 +138,8 @@ const STATUS_LABELS: Record<string, string> = {
   blocked_on_client: 'Blocked', handed_over: 'Handed Over',
 }
 
-export default function DashboardTable({ clients, canQuick }: Props) {
+export default function DashboardTable({ clients, isAdmin, isVisitor, userId }: Props) {
+  const canQuick = (c: EnrichedClient) => !isVisitor && (isAdmin || c.owner_id === userId)
   const router = useRouter()
 
   const [statusF,  setStatusF]  = useState<string[]>([])

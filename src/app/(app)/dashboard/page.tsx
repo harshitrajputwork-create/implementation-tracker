@@ -109,10 +109,9 @@ export default async function DashboardPage() {
       ) : (
         <DashboardTable
           clients={activeClients as any}
-          canQuick={(c) =>
-            profile?.role !== 'visitor' &&
-            (profile?.role === 'admin' || c.owner_id === profile?.id)
-          }
+          isAdmin={profile?.role === 'admin'}
+          isVisitor={profile?.role === 'visitor'}
+          userId={profile?.id ?? null}
         />
       )}
     </div>
