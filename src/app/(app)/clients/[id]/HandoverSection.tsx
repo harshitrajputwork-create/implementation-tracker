@@ -3,8 +3,8 @@
 import { useState, useTransition } from 'react'
 import type { Client, RolloutConfirmation } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
-import { setRolloutDateAction, markHandedOverAction, updateClientStatusAction } from './actions'
-import { CalendarCheck, UserCheck, ChevronDown } from 'lucide-react'
+import { setRolloutDateAction, updateClientStatusAction } from './actions'
+import { CalendarCheck, ChevronDown } from 'lucide-react'
 import type { ClientStatus } from '@/lib/types'
 
 const STATUS_OPTIONS: { value: ClientStatus; label: string; color: string }[] = [
@@ -32,13 +32,6 @@ export default function HandoverSection({
   )
   const [rolloutNotes, setRolloutNotes] = useState(rollout?.notes ?? '')
 
-  // Handover form
-  const [showHandoverForm, setShowHandoverForm] = useState(false)
-  const [kamName, setKamName] = useState(client.handed_over_to_kam ?? '')
-  const [handoverDate, setHandoverDate] = useState(
-    client.handover_date ?? new Date().toISOString().split('T')[0]
-  )
-
   // Status
   const [status, setStatus] = useState<ClientStatus>(client.status)
 
@@ -46,14 +39,6 @@ export default function HandoverSection({
     startTransition(async () => {
       await setRolloutDateAction(client.id, rolloutDate, rolloutNotes)
       setShowRolloutForm(false)
-    })
-  }
-
-  function saveHandover() {
-    if (!kamName.trim()) return
-    startTransition(async () => {
-      await markHandedOverAction(client.id, kamName, handoverDate)
-      setShowHandoverForm(false)
     })
   }
 
@@ -165,85 +150,6 @@ export default function HandoverSection({
         )}
       </div>
 
-      {/* KAM Handover */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
-            <UserCheck className="w-4 h-4 text-violet-500" />
-            KAM Handover
-          </h3>
-          {canEdit && !client.is_handed_over && !showHandoverForm && (
-            <button
-              onClick={() => setShowHandoverForm(true)}
-              className="text-xs text-violet-600 hover:text-violet-700 font-medium"
-            >
-              Mark as handed over
-            </button>
-          )}
-        </div>
-
-        {client.is_handed_over ? (
-          <div>
-            <p className="text-sm text-gray-700">
-              Handed over to{' '}
-              <span className="font-semibold">{client.handed_over_to_kam}</span>
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {formatDate(client.handover_date)}
-            </p>
-          </div>
-        ) : !showHandoverForm ? (
-          <p className="text-sm text-gray-400">Not yet handed over</p>
-        ) : null}
-
-        {showHandoverForm && canEdit && (
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">
-                KAM name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={kamName}
-                onChange={(e) => setKamName(e.target.value)}
-                placeholder="e.g. Priya Mehta"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">
-                Handover date
-              </label>
-              <input
-                type="date"
-                value={handoverDate}
-                onChange={(e) => setHandoverDate(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-              />
-            </div>
-            <div className="bg-violet-50 border border-violet-200 rounded-lg px-3 py-2.5">
-              <p className="text-xs text-violet-700">
-                This will mark the account as &quot;Handed Over&quot; and lock the implementation timeline. A journey report will be available at the top of this page.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={saveHandover}
-                disabled={isPending || !kamName.trim()}
-                className="px-4 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors disabled:opacity-50"
-              >
-                {isPending ? 'Saving…' : 'Confirm handover'}
-              </button>
-              <button
-                onClick={() => setShowHandoverForm(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   )
 }

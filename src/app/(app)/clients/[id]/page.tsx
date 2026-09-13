@@ -10,8 +10,9 @@ import ActivityLog from './ActivityLog'
 import ClientMetaEditor, { TicketSizeBadge } from './ClientMetaEditor'
 import ClientSpocs from './ClientSpocs'
 import ClientNotes from './ClientNotes'
+import ClientLifecycle from './ClientLifecycle'
 import { formatDate } from '@/lib/utils'
-import { ChevronLeft, FileText, Send, MapPin, User2, Package, ExternalLink } from 'lucide-react'
+import { ChevronLeft, FileText, Send, MapPin, Package, ExternalLink } from 'lucide-react'
 import type { Client, PlanStep, DeviationLogEntry, RolloutConfirmation, Profile, UseCase, ClientUseCase, ActivityEntry, ConfigOption, ClientSpoc } from '@/lib/types'
 import {
   IS_DEV_BYPASS, MOCK_PROFILE, getMockClient, getMockSteps,
@@ -155,8 +156,6 @@ export default async function ClientDetailPage({
             {typedClient.industry && <span>{typedClient.industry}</span>}
             {typedClient.company_size && <><span className="text-gray-300">·</span><span>{typedClient.company_size}</span></>}
             {typedClient.kickoff_date && <><span className="text-gray-300">·</span><span>Kickoff {formatDate(typedClient.kickoff_date)}</span></>}
-            {owner && <><span className="text-gray-300">·</span><span className="flex items-center gap-1"><User2 className="w-3.5 h-3.5" />{owner.full_name ?? owner.email}</span></>}
-            {typedClient.sales_spoc && <><span className="text-gray-300">·</span><span>Sales: {typedClient.sales_spoc}</span></>}
             {typedClient.country && <><span className="text-gray-300">·</span><span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{typedClient.country}</span></>}
             {typedClient.modules && typedClient.modules.length > 0 && (
               <>
@@ -258,6 +257,11 @@ export default async function ClientDetailPage({
 
           {/* Right: Actions — fixed width */}
           <div className="w-72 flex-shrink-0 space-y-4">
+            <ClientLifecycle
+              client={typedClient}
+              owner={owner}
+              canEdit={canEdit}
+            />
             <HandoverSection
               client={typedClient}
               rollout={typedRollout}

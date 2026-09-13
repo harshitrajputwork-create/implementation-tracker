@@ -279,39 +279,40 @@ function StepRow({
 
 // ── gantt chart ───────────────────────────────────────────────────────────────
 
-const TOTAL_DAYS = 30
-const MIN_COL    = 20
-const MAX_COL    = 64
+const MIN_COL = 20
+const MAX_COL = 64
 
 function GanttChart({
   steps, kickoffDate, clientId, canEdit,
 }: {
   steps: PlanStep[]; kickoffDate: string | null; clientId: string; canEdit: boolean
 }) {
+  // Dynamic plan length based on actual steps (min 30, rounds up to nearest 5)
+  const planDays = steps.length
+    ? Math.ceil(Math.max(30, ...steps.map((s) => parseDayRange(s.ideated_day_range).endDay)) / 5) * 5
+    : 30
+
   const [colWidth, setColWidth]   = useState(24)
-  const [fitCol, setFitCol]       = useState(24)   // auto-fit value = effective min zoom
+  const [fitCol, setFitCol]       = useState(24)
   const [activeId, setActiveId]   = useState<string | null>(null)
   const [doneDate, setDoneDate]   = useState(today())
   const [isPending, startTransition] = useTransition()
   const wrapperRef    = useRef<HTMLDivElement>(null)
-  const userZoomedRef = useRef(false)   // true once user manually zooms in
-  const fitColRef     = useRef(24)      // mirror of fitCol for use in callbacks
+  const userZoomedRef = useRef(false)
+  const fitColRef     = useRef(24)
 
-  // ResizeObserver: auto-fit on first layout + any container resize.
-  // Only overrides colWidth if user hasn't manually zoomed in.
   useEffect(() => {
     const el = wrapperRef.current
     if (!el) return
 
     const observer = new ResizeObserver(([entry]) => {
       const available = entry.contentRect.width - 180 - 16
-      const fit = Math.max(MIN_COL, Math.min(MAX_COL, Math.floor(available / TOTAL_DAYS)))
+      const fit = Math.max(MIN_COL, Math.min(MAX_COL, Math.floor(available / planDays)))
       fitColRef.current = fit
       setFitCol(fit)
       if (!userZoomedRef.current) {
         setColWidth(fit)
       } else {
-        // If window shrinks below user zoom, clamp down
         setColWidth((w) => Math.max(fit, w))
       }
     })
@@ -335,17 +336,17 @@ function GanttChart({
   }, [])
 
   const sorted = [...steps].sort((a, b) => a.step_order - b.step_order)
-  const totalW = TOTAL_DAYS * colWidth
+  const totalW = planDays * colWidth
 
   // Today line position
   const todayOffset: number | null = kickoffDate ? (() => {
     const dayNum = Math.round(
       (Date.now() - new Date(kickoffDate + 'T00:00:00').getTime()) / 86_400_000,
     )
-    return dayNum >= 0 && dayNum < TOTAL_DAYS ? dayNum * colWidth : null
+    return dayNum >= 0 && dayNum < planDays ? dayNum * colWidth : null
   })() : null
 
-  // Label density: show every day when wide enough, else every 5
+  // Label density: every day when col >= 28px, else every 5
   const labelEvery = colWidth >= 28 ? 1 : 5
 
   function confirmMarkDone(step: PlanStep) {
@@ -380,38 +381,31 @@ function GanttChart({
           {/* x-axis header */}
           <div className="flex mb-0">
             <div style={{ width: 180 }} className="flex-shrink-0" />
-            <div className="relative" style={{ minWidth: totalW, height: 44 }}>
+            <div className="relative" style={{ minWidth: totalW, height: 46 }}>
               {/* TODAY chip */}
               {todayOffset !== null && (
-                <div className="absolute top-0 z-10" style={{ left: todayOffset + colWidth / 2, transform: 'translateX(-50%)' }}>
+                <div className="absolute top-0 z-10" style={{ left: todayOffset, transform: 'translateX(-50%)' }}>
                   <div className="bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap shadow-sm">
                     TODAY
                   </div>
                 </div>
               )}
-              {/* Date labels — all days, show day number; show month at start of each month */}
-              {Array.from({ length: TOTAL_DAYS }, (_, i) => i).map((i) => {
-                const calDate = kickoffDate ? addDays(kickoffDate, i) : null
-                const dayNum = i + 1
-                const showLabel = dayNum === 1 || (dayNum - 1) % labelEvery === 0
-                const isFirstOfMonth = calDate && calDate.getDate() === 1
-                return (
-                  <div key={i} className="absolute" style={{ left: i * colWidth, top: 0, width: colWidth }}>
-                    {showLabel && calDate && (
-                      <div className="text-center">
-                        <div className="text-[10px] font-semibold text-gray-600 leading-none mt-4">
-                          {calDate.getDate()}
+              {/* D-labels + calendar date */}
+              {Array.from({ length: planDays }, (_, i) => i + 1)
+                .filter((d) => d === 1 || (d - 1) % labelEvery === 0)
+                .map((d) => {
+                  const calDate = kickoffDate ? addDays(kickoffDate, d - 1) : null
+                  return (
+                    <div key={d} className="absolute" style={{ left: (d - 1) * colWidth, top: 12 }}>
+                      <div className="text-[10px] font-bold text-gray-500 leading-none">D{d}</div>
+                      {calDate && (
+                        <div className="text-[9px] text-gray-400 leading-none mt-0.5 whitespace-nowrap">
+                          {calDate.getDate()} {calDate.toLocaleDateString('en-GB', { month: 'short' })}
                         </div>
-                        {(dayNum === 1 || isFirstOfMonth) && (
-                          <div className="text-[9px] text-gray-400 leading-none mt-0.5 whitespace-nowrap">
-                            {calDate.toLocaleDateString('en-GB', { month: 'short' })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+                      )}
+                    </div>
+                  )
+                })}
             </div>
           </div>
 
@@ -471,7 +465,7 @@ function GanttChart({
                       }}
                     >
                       {/* Grid line for every day */}
-                      {Array.from({ length: TOTAL_DAYS + 1 }, (_, i) => i).map((i) => (
+                      {Array.from({ length: planDays + 1 }, (_, i) => i).map((i) => (
                         <div
                           key={i}
                           className="absolute top-0 bottom-0"
@@ -593,10 +587,14 @@ export default function PlanTimeline({
   const sorted    = [...steps].sort((a, b) => a.step_order - b.step_order)
   const doneCount = sorted.filter((s) => s.status === 'done').length
 
+  const planDays = sorted.length
+    ? Math.ceil(Math.max(30, ...sorted.map((s) => parseDayRange(s.ideated_day_range).endDay)) / 5) * 5
+    : 30
+
   const dateRange = kickoffDate
     ? (() => {
         const s = fmtShort(new Date(kickoffDate + 'T00:00:00'))
-        const e = fmtShort(addDays(kickoffDate, TOTAL_DAYS - 1))
+        const e = fmtShort(addDays(kickoffDate, planDays - 1))
         return `${s} – ${e}`
       })()
     : null
@@ -607,7 +605,7 @@ export default function PlanTimeline({
       <div className="flex items-center justify-between mb-3">
         <div>
           <div className="flex items-baseline gap-2">
-            <h2 className="font-semibold text-gray-900">30-Day Implementation Plan</h2>
+            <h2 className="font-semibold text-gray-900">{planDays}-Day Implementation Plan</h2>
             <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
               {doneCount}/{sorted.length}
             </span>
