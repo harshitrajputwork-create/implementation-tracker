@@ -9,7 +9,7 @@ import GrowthTab from './GrowthTab'
 import ActivityLog from './ActivityLog'
 import ClientMetaEditor, { TicketSizeBadge } from './ClientMetaEditor'
 import { formatDate } from '@/lib/utils'
-import { ChevronLeft, FileText, Send, MapPin, User2, Package } from 'lucide-react'
+import { ChevronLeft, FileText, Send, MapPin, User2, Package, ExternalLink } from 'lucide-react'
 import type { Client, PlanStep, DeviationLogEntry, RolloutConfirmation, Profile, UseCase, ClientUseCase, ActivityEntry, ConfigOption } from '@/lib/types'
 import {
   IS_DEV_BYPASS, MOCK_PROFILE, getMockClient, getMockSteps,
@@ -125,6 +125,17 @@ export default async function ClientDetailPage({
             <h1 className="text-2xl font-bold text-gray-900">{typedClient.name}</h1>
             <StatusBadge status={typedClient.status} />
             {typedClient.ticket_size && <TicketSizeBadge size={typedClient.ticket_size} />}
+            {typedClient.account_url && (
+              <a
+                href={typedClient.account_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium border border-blue-200 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-full transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />
+                Open account
+              </a>
+            )}
           </div>
           <div className="flex items-center gap-3 text-sm text-gray-500 flex-wrap">
             {typedClient.industry && <span>{typedClient.industry}</span>}

@@ -200,6 +200,7 @@ export async function updateClientMetaAction(
     sales_spoc?: string | null
     country?: string | null
     modules?: string[]
+    account_url?: string | null
   },
 ) {
   const supabase = await createClient()

@@ -1,8 +1,9 @@
 -- New fields on clients
-ALTER TABLE clients ADD COLUMN IF NOT EXISTS ticket_size TEXT;
-ALTER TABLE clients ADD COLUMN IF NOT EXISTS sales_spoc  TEXT;
-ALTER TABLE clients ADD COLUMN IF NOT EXISTS country     TEXT;
-ALTER TABLE clients ADD COLUMN IF NOT EXISTS modules     TEXT[] DEFAULT '{}';
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS ticket_size  TEXT;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS sales_spoc   TEXT;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS country      TEXT;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS modules      TEXT[] DEFAULT '{}';
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS account_url  TEXT;
 
 -- Configurable dropdown values table
 CREATE TABLE IF NOT EXISTS config_options (

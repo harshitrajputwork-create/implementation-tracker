@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Pencil, Check, X } from 'lucide-react'
+import { Pencil, Check, X, ExternalLink } from 'lucide-react'
 import { updateClientMetaAction } from './actions'
 import type { Client, Profile, ConfigOption } from '@/lib/types'
 
@@ -44,6 +44,7 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
   const [spoc,       setSpoc]       = useState(client.sales_spoc ?? '')
   const [country,    setCountry]    = useState(client.country ?? '')
   const [modules,    setModules]    = useState<string[]>(client.modules ?? [])
+  const [accountUrl, setAccountUrl] = useState(client.account_url ?? '')
 
   const spocOptions    = configOptions.filter((o) => o.config_key === 'sales_spoc')
   const countryOptions = configOptions.filter((o) => o.config_key === 'country')
@@ -68,6 +69,7 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
         sales_spoc: spoc || null,
         country: country || null,
         modules,
+        account_url: accountUrl.trim() || null,
       })
       setOpen(false)
     })
@@ -99,6 +101,17 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
               {/* Name */}
               <Field label="Client name">
                 <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
+              </Field>
+
+              {/* Account URL */}
+              <Field label={<span className="flex items-center gap-1.5">Account URL <ExternalLink className="w-3 h-3 text-gray-400" /></span>}>
+                <input
+                  value={accountUrl}
+                  onChange={(e) => setAccountUrl(e.target.value)}
+                  type="url"
+                  placeholder="https://clientname.taqtics.co/"
+                  className={`${inputCls} placeholder-gray-400`}
+                />
               </Field>
 
               {/* Ticket Size */}
@@ -213,7 +226,7 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
 
 const inputCls = 'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white'
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
       <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>

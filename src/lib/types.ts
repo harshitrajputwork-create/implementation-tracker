@@ -41,6 +41,7 @@ export interface Client {
   sales_spoc: string | null
   country: string | null
   modules: string[] | null
+  account_url: string | null
   owner?: Profile | null
   plan_steps?: PlanStep[]
 }
