@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getSessionUser } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import StatusBadge from '@/components/StatusBadge'
@@ -53,18 +53,18 @@ export default async function ClientDetailPage({
     typedRollout = id === 'demo-client-1' ? MOCK_ROLLOUT : null
     canEdit = true
   } else {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSessionUser()
     if (!user) redirect('/login')
 
-    const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+    const [{ data: p }, { data: client }] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', user.id).single(),
+      supabase
+        .from('clients')
+        .select('*, owner:profiles!owner_id(id, full_name, email, role)')
+        .eq('id', id)
+        .single(),
+    ])
     profile = p
-
-    const { data: client } = await supabase
-      .from('clients')
-      .select('*, owner:profiles!owner_id(id, full_name, email, role)')
-      .eq('id', id)
-      .single()
     if (!client) notFound()
 
     // Fetch all secondary data in parallel

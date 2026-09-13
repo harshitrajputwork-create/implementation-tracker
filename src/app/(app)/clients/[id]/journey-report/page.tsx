@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getSessionUser } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -66,10 +66,7 @@ export default async function JourneyReportPage({
     typedLog = MOCK_DEVIATION_LOG.filter((e) => e.client_id === id)
     typedRollout = id === 'demo-client-1' ? MOCK_ROLLOUT : null
   } else {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { supabase, user } = await getSessionUser()
     if (!user) redirect('/login')
 
     const { data: client } = await supabase

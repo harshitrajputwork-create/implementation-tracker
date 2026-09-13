@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getSessionUser } from '@/lib/supabase/server'
 import Sidebar from '@/components/Sidebar'
 import { IS_DEV_BYPASS, MOCK_PROFILE, MOCK_CLIENTS } from '@/lib/dev-mock'
 
@@ -12,26 +12,16 @@ export default async function AppLayout({
   let clients: { id: string; name: string; status: string }[] = []
 
   if (!IS_DEV_BYPASS) {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
+    const { supabase, user } = await getSessionUser()
     if (!user) redirect('/login')
 
-    const { data: p } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
+    const [{ data: p }, { data: c }] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', user.id).single(),
+      supabase.from('clients').select('id, name, status').order('name'),
+    ])
 
     if (!p) redirect('/login')
     profile = p
-
-    const { data: c } = await supabase
-      .from('clients')
-      .select('id, name, status')
-      .order('name')
     clients = (c ?? []) as typeof clients
   } else {
     clients = MOCK_CLIENTS.map((c) => ({ id: c.id, name: c.name, status: c.status }))

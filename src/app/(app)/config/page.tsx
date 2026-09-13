@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getSessionUser } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Settings } from 'lucide-react'
 import ConfigEditor from './ConfigEditor'
@@ -7,8 +7,7 @@ import { PLAN_TEMPLATE } from '@/lib/plan-template'
 import type { ConfigOption } from '@/lib/types'
 
 export default async function ConfigPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
   if (!user) redirect('/login')
 
   const { data: profile } = await supabase

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getSessionUser } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Client } from '@/lib/types'
@@ -30,19 +30,18 @@ export default async function DashboardPage() {
   let rawClients: Client[] = IS_DEV_BYPASS ? MOCK_CLIENTS : []
 
   if (!IS_DEV_BYPASS) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSessionUser()
     if (!user) redirect('/login')
 
-    const { data: p } = await supabase
-      .from('profiles').select('*').eq('id', user.id).single()
+    const [{ data: p }, { data: c }] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', user.id).single(),
+      supabase
+        .from('clients')
+        .select(`*, owner:profiles!owner_id(id, full_name, email, role),
+                 plan_steps(id, status, step_order, step_name, ideated_day_range, real_date_completed)`)
+        .order('created_at', { ascending: false }),
+    ])
     profile = p
-
-    const { data: c } = await supabase
-      .from('clients')
-      .select(`*, owner:profiles!owner_id(id, full_name, email, role),
-               plan_steps(id, status, step_order, step_name, ideated_day_range, real_date_completed)`)
-      .order('created_at', { ascending: false })
     rawClients = (c as Client[]) ?? []
   }
 

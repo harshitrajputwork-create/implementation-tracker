@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getSessionUser } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { ClientStatus, StepStatus, DeviationCause } from '@/lib/types'
 
@@ -31,8 +31,7 @@ export async function updateStepAction(
   status: StepStatus,
   realDate?: string,
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
 
   const { data: step } = await supabase
     .from('plan_steps').select('step_name').eq('id', stepId).single()
@@ -63,8 +62,7 @@ export async function updateStepNotesAction(
   notes: string,
   clientVisible: boolean = false,
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
 
   await supabase
     .from('plan_steps')
@@ -82,8 +80,7 @@ export async function updateStepConfigAction(
   stepName: string,
   dayRange: string,
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
 
   await supabase
     .from('plan_steps')
@@ -99,8 +96,7 @@ export async function updateClientStatusAction(
   clientId: string,
   statusOverride: ClientStatus | null,
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
 
   await supabase
     .from('clients')
@@ -118,8 +114,7 @@ export async function addDeviationEntryAction(
   cause: DeviationCause,
   clientVisible: boolean = false,
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
   if (!user || !note.trim()) return
 
   await supabase.from('deviation_log').insert({
@@ -140,8 +135,7 @@ export async function setRolloutDateAction(
   confirmedDate: string,
   notes?: string,
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
   if (!user) return
 
   await supabase.from('rollout_confirmations').upsert(
@@ -159,8 +153,7 @@ export async function markHandedOverAction(
   kamName: string,
   handoverDate: string,
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
 
   await supabase
     .from('clients')
@@ -178,8 +171,7 @@ export async function markHandedOverAction(
 }
 
 export async function updateClientNotesAction(clientId: string, notes: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
 
   await supabase.from('clients').update({ notes: notes || null }).eq('id', clientId)
 
@@ -203,8 +195,7 @@ export async function updateClientMetaAction(
     account_url?: string | null
   },
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
   if (!user) return
 
   await supabase.from('clients').update(fields).eq('id', clientId)
@@ -220,8 +211,7 @@ export async function addSpocAction(
   clientId: string,
   fields: { name: string; email?: string; department?: string; notes?: string },
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
   if (!user) return
 
   const { data: last } = await supabase
@@ -245,8 +235,7 @@ export async function updateSpocAction(
   clientId: string,
   fields: { name: string; email?: string; department?: string; notes?: string },
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
   if (!user) return
 
   await supabase.from('client_spocs').update({
@@ -259,8 +248,7 @@ export async function updateSpocAction(
 }
 
 export async function deleteSpocAction(spocId: string, clientId: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
   if (!user) return
   await supabase.from('client_spocs').delete().eq('id', spocId)
   revalidatePath(`/clients/${clientId}`)
@@ -269,8 +257,7 @@ export async function deleteSpocAction(spocId: string, clientId: string) {
 // ── Personal notes ────────────────────────────────────────────────────────────
 
 export async function upsertPersonalNoteAction(clientId: string, content: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
   if (!user) return
 
   await supabase.from('personal_notes').upsert(

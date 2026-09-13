@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getSessionUser } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, BookOpen, Plus, Trash2, ExternalLink } from 'lucide-react'
@@ -47,8 +47,7 @@ export default async function LibraryPage() {
       },
     ]
   } else {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSessionUser()
     if (!user) redirect('/login')
 
     const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single()

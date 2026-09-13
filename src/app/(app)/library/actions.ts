@@ -1,11 +1,10 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getSessionUser } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 export async function createUseCaseAction(formData: FormData) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
   if (!user) return
 
   const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -23,8 +22,7 @@ export async function createUseCaseAction(formData: FormData) {
 }
 
 export async function deleteUseCaseAction(id: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
   if (!user) return
 
   const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -39,8 +37,7 @@ export async function toggleClientUseCaseAction(
   useCaseId: string,
   isUsing: boolean
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
   if (!user) return
 
   await supabase.from('client_use_cases').upsert(

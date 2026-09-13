@@ -1,8 +1,9 @@
-import { createClient } from '@/lib/supabase/server'
+import { getSessionUser } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { PLAN_TEMPLATE } from '@/lib/plan-template'
 import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
+import SubmitButton from './SubmitButton'
 import { ChevronLeft, ExternalLink } from 'lucide-react'
 import { IS_DEV_BYPASS, MOCK_MEMBERS } from '@/lib/dev-mock'
 import type { Profile, ConfigOption } from '@/lib/types'
@@ -42,38 +43,39 @@ async function createClientAction(formData: FormData) {
     redirect('/clients/demo-client-1')
   }
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return
+  const { supabase, user } = await getSessionUser()
+  if (!user) redirect('/login')
 
-  const { data: client, error } = await supabase
-    .from('clients')
-    .insert({
-      name: name.trim(),
-      industry: industry || null,
-      company_size: company_size || null,
-      owner_id: owner_id || user.id,
-      kickoff_date: kickoff_date || null,
-      notes: notes || null,
-      ticket_size: ticket_size || null,
-      sales_spoc: sales_spoc || null,
-      country: country || null,
-      modules: modules.length > 0 ? modules : null,
-      account_url: account_url || null,
-      created_by: user.id,
-    })
-    .select()
-    .single()
+  // Insert the client and fetch the step template concurrently — the template
+  // lookup does not depend on the new client row.
+  const [{ data: client, error }, { data: templateRows }] = await Promise.all([
+    supabase
+      .from('clients')
+      .insert({
+        name: name.trim(),
+        industry: industry || null,
+        company_size: company_size || null,
+        owner_id: owner_id || user.id,
+        kickoff_date: kickoff_date || null,
+        notes: notes || null,
+        ticket_size: ticket_size || null,
+        sales_spoc: sales_spoc || null,
+        country: country || null,
+        modules: modules.length > 0 ? modules : null,
+        account_url: account_url || null,
+        created_by: user.id,
+      })
+      .select('id')
+      .single(),
+    supabase
+      .from('step_templates')
+      .select('step_order, step_name, ideated_day_range, description')
+      .order('step_order'),
+  ])
 
-  if (error || !client) return
-
-  // Use DB template if available, fall back to hardcoded constant
-  const { data: templateRows } = await supabase
-    .from('step_templates')
-    .select('step_order, step_name, ideated_day_range, description')
-    .order('step_order')
+  if (error || !client) {
+    throw new Error(error?.message ?? 'Could not create the client record.')
+  }
 
   const template = templateRows && templateRows.length > 0 ? templateRows : PLAN_TEMPLATE
 
@@ -106,25 +108,18 @@ export default async function NewClientPage() {
   let configOptions: ConfigOption[] = []
 
   if (!IS_DEV_BYPASS) {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { supabase, user } = await getSessionUser()
     if (!user) redirect('/login')
     userId = user.id
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role === 'visitor') redirect('/dashboard')
-
-    const [{ data: m }, { data: opts }] = await Promise.all([
+    const [{ data: profile }, { data: m }, { data: opts }] = await Promise.all([
+      supabase.from('profiles').select('role').eq('id', user.id).single(),
       supabase.from('profiles').select('id, full_name, email, role').in('role', ['admin', 'member']).order('full_name'),
       supabase.from('config_options').select('*').order('sort_order'),
     ])
+
+    if (profile?.role === 'visitor') redirect('/dashboard')
+
     members = (m ?? []) as Profile[]
     configOptions = (opts ?? []) as ConfigOption[]
   }
@@ -271,12 +266,7 @@ export default async function NewClientPage() {
 
         {/* Submit */}
         <div className="pt-7 flex items-center gap-3 border-t border-gray-100 mt-7">
-          <button type="submit" className="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-semibold">
-            Create client & open plan
-          </button>
-          <Link href="/dashboard" className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium">
-            Cancel
-          </Link>
+          <SubmitButton />
         </div>
       </form>
     </div>

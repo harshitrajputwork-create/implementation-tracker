@@ -1,12 +1,11 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getSessionUser } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { Role } from '@/lib/types'
 
 export async function inviteUserAction(email: string, role: Role) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
   if (!user) return { error: 'Not authenticated' }
 
   const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -26,8 +25,7 @@ export async function inviteUserAction(email: string, role: Role) {
 }
 
 export async function updateUserRoleAction(profileId: string, role: Role) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
   if (!user) return { error: 'Not authenticated' }
 
   const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -39,8 +37,7 @@ export async function updateUserRoleAction(profileId: string, role: Role) {
 }
 
 export async function revokeInvitationAction(invitationId: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
   if (!user) return { error: 'Not authenticated' }
 
   const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single()

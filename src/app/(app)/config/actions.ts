@@ -1,11 +1,10 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getSessionUser } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 async function assertAdmin() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getSessionUser()
   if (!user) throw new Error('Unauthenticated')
   const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (p?.role !== 'admin') throw new Error('Forbidden')
