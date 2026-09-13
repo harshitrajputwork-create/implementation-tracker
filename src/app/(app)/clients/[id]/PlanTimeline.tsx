@@ -280,7 +280,7 @@ function StepRow({
 // ── gantt chart ───────────────────────────────────────────────────────────────
 
 const TOTAL_DAYS = 30
-const MIN_COL    = 16
+const MIN_COL    = 20
 const MAX_COL    = 64
 
 function GanttChart({
@@ -345,8 +345,8 @@ function GanttChart({
     return dayNum >= 0 && dayNum < TOTAL_DAYS ? dayNum * colWidth : null
   })() : null
 
-  // Label density based on zoom
-  const labelEvery = colWidth >= 30 ? 1 : colWidth >= 20 ? 5 : 10
+  // Label density: show every day when wide enough, else every 5
+  const labelEvery = colWidth >= 28 ? 1 : 5
 
   function confirmMarkDone(step: PlanStep) {
     setActiveId(null)
@@ -378,41 +378,46 @@ function GanttChart({
         <div style={{ minWidth: 180 + totalW + 16, width: '100%' }}>
 
           {/* x-axis header */}
-          <div className="flex mb-1">
+          <div className="flex mb-0">
             <div style={{ width: 180 }} className="flex-shrink-0" />
-            <div className="relative flex-1" style={{ minWidth: totalW, height: 50 }}>
+            <div className="relative" style={{ minWidth: totalW, height: 44 }}>
               {/* TODAY chip */}
               {todayOffset !== null && (
-                <div className="absolute top-0 z-10" style={{ left: todayOffset, transform: 'translateX(-50%)' }}>
+                <div className="absolute top-0 z-10" style={{ left: todayOffset + colWidth / 2, transform: 'translateX(-50%)' }}>
                   <div className="bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap shadow-sm">
                     TODAY
                   </div>
                 </div>
               )}
-              {/* Day + date labels */}
-              {Array.from({ length: TOTAL_DAYS }, (_, i) => i + 1)
-                .filter((d) => d === 1 || (d - 1) % labelEvery === 0)
-                .map((d) => {
-                  const calDate = kickoffDate
-                    ? addDays(kickoffDate, d - 1)
-                    : null
-                  return (
-                    <div key={d} className="absolute" style={{ left: (d - 1) * colWidth, top: 14 }}>
-                      <div className="text-[10px] font-semibold text-gray-500 leading-none">D{d}</div>
-                      {calDate && (
-                        <div className="text-[10px] text-gray-400 leading-none mt-0.5 whitespace-nowrap">
-                          {fmtShort(calDate)}
+              {/* Date labels — all days, show day number; show month at start of each month */}
+              {Array.from({ length: TOTAL_DAYS }, (_, i) => i).map((i) => {
+                const calDate = kickoffDate ? addDays(kickoffDate, i) : null
+                const dayNum = i + 1
+                const showLabel = dayNum === 1 || (dayNum - 1) % labelEvery === 0
+                const isFirstOfMonth = calDate && calDate.getDate() === 1
+                return (
+                  <div key={i} className="absolute" style={{ left: i * colWidth, top: 0, width: colWidth }}>
+                    {showLabel && calDate && (
+                      <div className="text-center">
+                        <div className="text-[10px] font-semibold text-gray-600 leading-none mt-4">
+                          {calDate.getDate()}
                         </div>
-                      )}
-                    </div>
-                  )
-                })}
+                        {(dayNum === 1 || isFirstOfMonth) && (
+                          <div className="text-[9px] text-gray-400 leading-none mt-0.5 whitespace-nowrap">
+                            {calDate.toLocaleDateString('en-GB', { month: 'short' })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
 
           {/* Step rows */}
           <div>
-            {sorted.map((step) => {
+            {sorted.map((step, idx) => {
               const { startDay, endDay } = parseDayRange(step.ideated_day_range)
               const barLeft  = (startDay - 1) * colWidth
               const barWidth = (endDay - startDay + 1) * colWidth
@@ -443,34 +448,39 @@ function GanttChart({
                   : '#d1d5db'
 
               return (
-                <div key={step.id} className="mb-1">
+                <div key={step.id} className="mb-0">
                   {/* Row */}
-                  <div className="flex items-center" style={{ height: 36 }}>
+                  <div className={`flex items-center ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}`} style={{ height: 40 }}>
                     {/* Label */}
                     <div style={{ width: 180 }} className="flex-shrink-0 pr-4 text-right">
                       <div className="text-xs font-medium text-gray-700 truncate leading-tight">{step.step_name}</div>
-                      <div className="text-[10px] text-gray-400">{step.ideated_day_range}</div>
+                      <div className="text-[10px] text-gray-400">{kickoffDate ? stepDateRange(kickoffDate, step.ideated_day_range) : step.ideated_day_range}</div>
                     </div>
 
                     {/* Track */}
                     <div
                       className={cn(
-                        'relative flex-1 bg-gray-50 rounded-md overflow-visible',
+                        'relative flex-1 overflow-visible',
                         canEdit && !isDone && 'cursor-pointer group',
                       )}
-                      style={{ minWidth: totalW, height: 28 }}
+                      style={{ minWidth: totalW, height: 40 }}
                       onClick={() => {
                         if (!canEdit || isDone) return
                         setActiveId(isActive ? null : step.id)
                         setDoneDate(today())
                       }}
                     >
-                      {/* Grid lines every 5 days */}
-                      {[5, 10, 15, 20, 25].map((d) => (
+                      {/* Grid line for every day */}
+                      {Array.from({ length: TOTAL_DAYS + 1 }, (_, i) => i).map((i) => (
                         <div
-                          key={d}
-                          className="absolute top-0 bottom-0 border-l border-gray-200"
-                          style={{ left: d * colWidth }}
+                          key={i}
+                          className="absolute top-0 bottom-0"
+                          style={{
+                            left: i * colWidth,
+                            borderLeft: i % 5 === 0
+                              ? '1px solid #d1d5db'
+                              : '1px solid #f3f4f6',
+                          }}
                         />
                       ))}
 
@@ -484,23 +494,23 @@ function GanttChart({
 
                       {/* Planned bar (faint) */}
                       <div
-                        className="absolute top-[5px] h-[18px] rounded-full opacity-20"
+                        className="absolute top-[11px] h-[18px] rounded-full opacity-20"
                         style={{ left: barLeft, width: barWidth, backgroundColor: barColor }}
                       />
 
                       {/* Actual / progress bar */}
                       {actualBarWidth > 0 && (
                         <div
-                          className="absolute top-[5px] h-[18px] rounded-full transition-all"
+                          className="absolute top-[11px] h-[18px] rounded-full transition-all"
                           style={{ left: barLeft, width: actualBarWidth, backgroundColor: barColor }}
                         />
                       )}
 
                       {/* Hover hint */}
                       {canEdit && !isDone && (
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute inset-0 flex items-center justify-start pl-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{ paddingLeft: barLeft }}>
                           <span className="text-[10px] text-blue-600 font-medium bg-white/90 border border-blue-100 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
-                            Click to mark done
+                            Click · pick date · mark done
                           </span>
                         </div>
                       )}
@@ -509,7 +519,7 @@ function GanttChart({
                       {dev !== null && (
                         <span
                           className={cn(
-                            'absolute text-[10px] font-semibold whitespace-nowrap top-[6px]',
+                            'absolute text-[10px] font-semibold whitespace-nowrap top-[12px]',
                             dev === 0 ? 'text-green-700' : dev > 0 ? 'text-red-600' : 'text-blue-600',
                           )}
                           style={{ left: barLeft + Math.max(barWidth, actualBarWidth) + 4 }}

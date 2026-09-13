@@ -66,39 +66,30 @@ export default async function ClientDetailPage({
       .single()
     if (!client) notFound()
 
-    const { data: planSteps } = await supabase
-      .from('plan_steps').select('*').eq('client_id', id).order('step_order')
-    const { data: deviationLog } = await supabase
-      .from('deviation_log')
-      .select('*, author:profiles!author_id(id, full_name, email)')
-      .eq('client_id', id).order('created_at', { ascending: false })
-    const { data: rollout } = await supabase
-      .from('rollout_confirmations').select('*').eq('client_id', id).maybeSingle()
-
-    // Growth use cases filtered by industry
-    const { data: uc } = await supabase
-      .from('use_cases').select('*')
-      .or(`industry_tag.is.null,industry_tag.eq.${client.industry ?? ''}`)
-    const { data: cuc } = await supabase
-      .from('client_use_cases').select('*, use_case:use_cases(*)').eq('client_id', id)
-
-    const { data: actLog } = await supabase
-      .from('activity_log')
-      .select('*')
-      .eq('client_id', id)
-      .order('created_at', { ascending: false })
-      .limit(50)
-
-    const { data: mem } = await supabase
-      .from('profiles').select('id, full_name, email, role').in('role', ['admin', 'member']).order('full_name')
-    const { data: opts } = await supabase
-      .from('config_options').select('*').order('sort_order')
-
-    const { data: spocs } = await supabase
-      .from('client_spocs').select('*').eq('client_id', id).order('sort_order')
-
-    const { data: pNote } = await supabase
-      .from('personal_notes').select('content').eq('client_id', id).eq('user_id', user.id).maybeSingle()
+    // Fetch all secondary data in parallel
+    const [
+      { data: planSteps },
+      { data: deviationLog },
+      { data: rollout },
+      { data: uc },
+      { data: cuc },
+      { data: actLog },
+      { data: mem },
+      { data: opts },
+      { data: spocs },
+      { data: pNote },
+    ] = await Promise.all([
+      supabase.from('plan_steps').select('*').eq('client_id', id).order('step_order'),
+      supabase.from('deviation_log').select('*, author:profiles!author_id(id, full_name, email)').eq('client_id', id).order('created_at', { ascending: false }),
+      supabase.from('rollout_confirmations').select('*').eq('client_id', id).maybeSingle(),
+      supabase.from('use_cases').select('*').or(`industry_tag.is.null,industry_tag.eq.${client.industry ?? ''}`),
+      supabase.from('client_use_cases').select('*, use_case:use_cases(*)').eq('client_id', id),
+      supabase.from('activity_log').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(50),
+      supabase.from('profiles').select('id, full_name, email, role').in('role', ['admin', 'member']).order('full_name'),
+      supabase.from('config_options').select('*').order('sort_order'),
+      supabase.from('client_spocs').select('*').eq('client_id', id).order('sort_order'),
+      supabase.from('personal_notes').select('content').eq('client_id', id).eq('user_id', user.id).maybeSingle(),
+    ])
 
     useCases = (uc ?? []) as UseCase[]
     clientUseCases = (cuc ?? []) as ClientUseCase[]
@@ -133,8 +124,16 @@ export default async function ClientDetailPage({
       {/* Client header */}
       <div className="flex items-start justify-between mb-8">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-2 flex-wrap">
+          {/* Row 1: name + pencil + badges */}
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <h1 className="text-2xl font-bold text-gray-900">{typedClient.name}</h1>
+            <ClientMetaEditor
+              client={typedClient}
+              members={members}
+              configOptions={configOptions}
+              canEdit={canEdit}
+              compact
+            />
             <StatusBadge status={typedClient.status} />
             {typedClient.ticket_size && <TicketSizeBadge size={typedClient.ticket_size} />}
             {typedClient.account_url && (
@@ -142,40 +141,38 @@ export default async function ClientDetailPage({
                 href={typedClient.account_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium border border-blue-200 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-full transition-colors"
+                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium border border-blue-200 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-full transition-colors max-w-[220px]"
               >
-                <ExternalLink className="w-3 h-3" />
-                Open account
+                <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                <span className="truncate">
+                  {(() => { try { return new URL(typedClient.account_url).hostname } catch { return typedClient.account_url } })()}
+                </span>
               </a>
             )}
           </div>
-          <div className="flex items-center gap-3 text-sm text-gray-500 flex-wrap">
+          {/* Row 2: metadata + modules inline */}
+          <div className="flex items-center gap-2 text-sm text-gray-500 flex-wrap">
             {typedClient.industry && <span>{typedClient.industry}</span>}
             {typedClient.company_size && <><span className="text-gray-300">·</span><span>{typedClient.company_size}</span></>}
             {typedClient.kickoff_date && <><span className="text-gray-300">·</span><span>Kickoff {formatDate(typedClient.kickoff_date)}</span></>}
             {owner && <><span className="text-gray-300">·</span><span className="flex items-center gap-1"><User2 className="w-3.5 h-3.5" />{owner.full_name ?? owner.email}</span></>}
             {typedClient.sales_spoc && <><span className="text-gray-300">·</span><span>Sales: {typedClient.sales_spoc}</span></>}
             {typedClient.country && <><span className="text-gray-300">·</span><span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{typedClient.country}</span></>}
+            {typedClient.modules && typedClient.modules.length > 0 && (
+              <>
+                <span className="text-gray-300">·</span>
+                <span className="flex items-center gap-1 flex-wrap">
+                  <Package className="w-3.5 h-3.5 text-gray-400" />
+                  {typedClient.modules.map((m) => (
+                    <span key={m} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">{m}</span>
+                  ))}
+                </span>
+              </>
+            )}
           </div>
-          {typedClient.modules && typedClient.modules.length > 0 && (
-            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-              <Package className="w-3.5 h-3.5 text-gray-400" />
-              {typedClient.modules.map((m) => (
-                <span key={m} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">{m}</span>
-              ))}
-            </div>
-          )}
           {typedClient.notes && (
-            <p className="text-sm text-gray-500 mt-2 max-w-xl">{typedClient.notes}</p>
+            <p className="text-sm text-gray-400 mt-1 max-w-xl">{typedClient.notes}</p>
           )}
-          <div className="mt-3">
-            <ClientMetaEditor
-              client={typedClient}
-              members={members}
-              configOptions={configOptions}
-              canEdit={canEdit}
-            />
-          </div>
         </div>
 
         {/* Export buttons */}

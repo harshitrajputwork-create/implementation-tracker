@@ -28,9 +28,10 @@ interface Props {
   members: Profile[]
   configOptions: ConfigOption[]
   canEdit: boolean
+  compact?: boolean
 }
 
-export default function ClientMetaEditor({ client, members, configOptions, canEdit }: Props) {
+export default function ClientMetaEditor({ client, members, configOptions, canEdit, compact }: Props) {
   const [open, setOpen]       = useState(false)
   const [isPending, start]    = useTransition()
 
@@ -81,10 +82,14 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-gray-700 transition-colors"
+        className={compact
+          ? 'p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors'
+          : 'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-gray-700 transition-colors'
+        }
+        title="Edit details"
       >
-        <Pencil className="w-3 h-3" />
-        Edit details
+        <Pencil className="w-3.5 h-3.5" />
+        {!compact && 'Edit details'}
       </button>
 
       {open && (
