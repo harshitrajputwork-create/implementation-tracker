@@ -213,3 +213,68 @@ export async function updateClientMetaAction(
   revalidatePath(`/clients/${clientId}`)
   revalidatePath('/dashboard')
 }
+
+// ── Client SPOCs ──────────────────────────────────────────────────────────────
+
+export async function addSpocAction(
+  clientId: string,
+  fields: { name: string; email?: string; department?: string; notes?: string },
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  const { data: last } = await supabase
+    .from('client_spocs').select('sort_order').eq('client_id', clientId)
+    .order('sort_order', { ascending: false }).limit(1)
+  const order = last && last.length > 0 ? last[0].sort_order + 1 : 1
+
+  await supabase.from('client_spocs').insert({
+    client_id: clientId,
+    name: fields.name.trim(),
+    email: fields.email?.trim() || null,
+    department: fields.department?.trim() || null,
+    notes: fields.notes?.trim() || null,
+    sort_order: order,
+  })
+  revalidatePath(`/clients/${clientId}`)
+}
+
+export async function updateSpocAction(
+  spocId: string,
+  clientId: string,
+  fields: { name: string; email?: string; department?: string; notes?: string },
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  await supabase.from('client_spocs').update({
+    name: fields.name.trim(),
+    email: fields.email?.trim() || null,
+    department: fields.department?.trim() || null,
+    notes: fields.notes?.trim() || null,
+  }).eq('id', spocId)
+  revalidatePath(`/clients/${clientId}`)
+}
+
+export async function deleteSpocAction(spocId: string, clientId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  await supabase.from('client_spocs').delete().eq('id', spocId)
+  revalidatePath(`/clients/${clientId}`)
+}
+
+// ── Personal notes ────────────────────────────────────────────────────────────
+
+export async function upsertPersonalNoteAction(clientId: string, content: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  await supabase.from('personal_notes').upsert(
+    { client_id: clientId, user_id: user.id, content, updated_at: new Date().toISOString() },
+    { onConflict: 'client_id,user_id' },
+  )
+}

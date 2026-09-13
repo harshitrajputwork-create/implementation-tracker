@@ -8,9 +8,11 @@ import HandoverSection from './HandoverSection'
 import GrowthTab from './GrowthTab'
 import ActivityLog from './ActivityLog'
 import ClientMetaEditor, { TicketSizeBadge } from './ClientMetaEditor'
+import ClientSpocs from './ClientSpocs'
+import ClientNotes from './ClientNotes'
 import { formatDate } from '@/lib/utils'
 import { ChevronLeft, FileText, Send, MapPin, User2, Package, ExternalLink } from 'lucide-react'
-import type { Client, PlanStep, DeviationLogEntry, RolloutConfirmation, Profile, UseCase, ClientUseCase, ActivityEntry, ConfigOption } from '@/lib/types'
+import type { Client, PlanStep, DeviationLogEntry, RolloutConfirmation, Profile, UseCase, ClientUseCase, ActivityEntry, ConfigOption, ClientSpoc } from '@/lib/types'
 import {
   IS_DEV_BYPASS, MOCK_PROFILE, getMockClient, getMockSteps,
   MOCK_DEVIATION_LOG, MOCK_ROLLOUT,
@@ -38,6 +40,8 @@ export default async function ClientDetailPage({
   let activityLog: ActivityEntry[] = []
   let members: Profile[] = []
   let configOptions: ConfigOption[] = []
+  let clientSpocs: ClientSpoc[] = []
+  let personalNote = ''
 
   if (IS_DEV_BYPASS) {
     const mc = getMockClient(id)
@@ -90,6 +94,12 @@ export default async function ClientDetailPage({
     const { data: opts } = await supabase
       .from('config_options').select('*').order('sort_order')
 
+    const { data: spocs } = await supabase
+      .from('client_spocs').select('*').eq('client_id', id).order('sort_order')
+
+    const { data: pNote } = await supabase
+      .from('personal_notes').select('content').eq('client_id', id).eq('user_id', user.id).maybeSingle()
+
     useCases = (uc ?? []) as UseCase[]
     clientUseCases = (cuc ?? []) as ClientUseCase[]
     activityLog = (actLog ?? []) as ActivityEntry[]
@@ -100,6 +110,8 @@ export default async function ClientDetailPage({
     typedSteps   = (planSteps ?? []) as PlanStep[]
     typedLog     = (deviationLog ?? []) as DeviationLogEntry[]
     typedRollout = rollout as RolloutConfirmation | null
+    clientSpocs  = (spocs ?? []) as ClientSpoc[]
+    personalNote = pNote?.content ?? ''
     canEdit =
       profile?.role === 'admin' ||
       (profile?.role === 'member' && client.owner_id === user.id)
@@ -248,10 +260,21 @@ export default async function ClientDetailPage({
           </div>
 
           {/* Right: Actions — fixed width */}
-          <div className="w-72 flex-shrink-0">
+          <div className="w-72 flex-shrink-0 space-y-4">
             <HandoverSection
               client={typedClient}
               rollout={typedRollout}
+              canEdit={canEdit}
+            />
+            <ClientSpocs
+              spocs={clientSpocs}
+              clientId={id}
+              canEdit={canEdit}
+            />
+            <ClientNotes
+              clientId={id}
+              teamNotes={typedClient.notes ?? ''}
+              personalNote={personalNote}
               canEdit={canEdit}
             />
           </div>

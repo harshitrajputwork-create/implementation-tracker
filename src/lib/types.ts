@@ -108,6 +108,25 @@ export interface ClientUseCase {
   use_case?: UseCase
 }
 
+export interface ClientSpoc {
+  id: string
+  client_id: string
+  name: string
+  email: string | null
+  department: string | null
+  notes: string | null
+  sort_order: number
+  created_at: string
+}
+
+export interface PersonalNote {
+  id: string
+  client_id: string
+  user_id: string
+  content: string
+  updated_at: string
+}
+
 export interface ActivityEntry {
   id: string
   client_id: string
