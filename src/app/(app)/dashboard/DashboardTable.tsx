@@ -12,10 +12,12 @@ import QuickMarkDone from './QuickMarkDone'
 interface EnrichedClient extends Client {
   _effectiveStatus: ClientStatus
   _isAuto: boolean
+  _overdueDays: number
 }
 
 interface Props {
   clients: EnrichedClient[]
+  handedOverClients?: EnrichedClient[]
   isAdmin: boolean
   isVisitor: boolean
   userId: string | null
@@ -138,19 +140,23 @@ const STATUS_LABELS: Record<string, string> = {
   blocked_on_client: 'Blocked', handed_over: 'Handed Over',
 }
 
-export default function DashboardTable({ clients, isAdmin, isVisitor, userId }: Props) {
+export default function DashboardTable({ clients, handedOverClients = [], isAdmin, isVisitor, userId }: Props) {
   const canQuick = (c: EnrichedClient) => !isVisitor && (isAdmin || c.owner_id === userId)
   const router = useRouter()
+
+  const [tab, setTab] = useState<'active' | 'handed_over'>('active')
 
   const [statusF,  setStatusF]  = useState<string[]>([])
   const [countryF, setCountryF] = useState<string[]>([])
   const [sizeF,    setSizeF]    = useState<string[]>([])
   const [spocF,    setSpocF]    = useState<string[]>([])
+  const [kamF,     setKamF]     = useState<string[]>([])
 
   const statusOpts  = unique(clients.map((c) => STATUS_LABELS[c._effectiveStatus] ?? c._effectiveStatus))
   const countryOpts = unique(clients.map((c) => c.country))
   const sizeOpts    = unique(clients.map((c) => c.ticket_size))
   const spocOpts    = unique(clients.map((c) => c.sales_spoc))
+  const kamOpts     = unique(handedOverClients.map((c) => c.handed_over_to_kam))
 
   const displayed = clients.filter((c) => {
     if (statusF.length  && !statusF.includes(STATUS_LABELS[c._effectiveStatus]  ?? c._effectiveStatus)) return false
@@ -160,10 +166,43 @@ export default function DashboardTable({ clients, isAdmin, isVisitor, userId }: 
     return true
   })
 
+  const displayedHandedOver = handedOverClients.filter((c) => {
+    if (kamF.length && !kamF.includes(c.handed_over_to_kam ?? '')) return false
+    return true
+  })
+
+  const kamCounts = handedOverClients.reduce<Record<string, number>>((acc, c) => {
+    const k = c.handed_over_to_kam ?? 'Unassigned'
+    acc[k] = (acc[k] ?? 0) + 1
+    return acc
+  }, {})
+
   const anyFilter = statusF.length || countryF.length || sizeF.length || spocF.length
 
   return (
     <div>
+      {/* Tabs */}
+      <div className="flex items-center gap-1 mb-4 border-b border-gray-200">
+        <button
+          onClick={() => setTab('active')}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+            tab === 'active' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Active ({clients.length})
+        </button>
+        <button
+          onClick={() => setTab('handed_over')}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+            tab === 'handed_over' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Handed Over ({handedOverClients.length})
+        </button>
+      </div>
+
+      {tab === 'active' ? (
+      <>
       {/* Filter bar */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <MultiFilter label="Status"      options={statusOpts}  selected={statusF}  onChange={setStatusF} />
@@ -265,7 +304,7 @@ export default function DashboardTable({ clients, isAdmin, isVisitor, userId }: 
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-1.5">
-                        <StatusBadge status={client._effectiveStatus} size="sm" />
+                        <StatusBadge status={client._effectiveStatus} size="sm" overdueDays={client._overdueDays} />
                         {client._isAuto && <span className="text-xs text-gray-400">auto</span>}
                       </div>
                     </td>
@@ -276,6 +315,86 @@ export default function DashboardTable({ clients, isAdmin, isVisitor, userId }: 
           </table>
         )}
       </div>
+      </>
+      ) : (
+      <>
+      {/* KAM breakdown */}
+      {Object.keys(kamCounts).length > 0 && (
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          {Object.entries(kamCounts).map(([kam, count]) => (
+            <span key={kam} className="flex items-center gap-1.5 text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200 px-2.5 py-1 rounded-full">
+              {kam}
+              <span className="bg-violet-600 text-white text-[10px] rounded-full px-1.5 py-0.5 leading-none font-semibold">{count}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Filter bar */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        {kamOpts.length > 0 && <MultiFilter label="KAM" options={kamOpts} selected={kamF} onChange={setKamF} />}
+        {!!kamF.length && (
+          <button
+            onClick={() => setKamF([])}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 px-2 py-1.5"
+          >
+            <X className="w-3 h-3" /> Clear
+          </button>
+        )}
+        {!!kamF.length && (
+          <span className="text-xs text-gray-400 ml-auto">{displayedHandedOver.length} of {handedOverClients.length}</span>
+        )}
+      </div>
+
+      {/* Handed-over table */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        {displayedHandedOver.length === 0 ? (
+          <div className="py-16 text-center text-gray-400 text-sm">
+            {handedOverClients.length === 0 ? 'No accounts handed over yet.' : 'No accounts match the selected filters.'}
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3.5">Client</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">Country</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">Sales SPOC</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">Implementation Owner</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">KAM</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">Handed over on</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {displayedHandedOver.map((client) => {
+                const owner = client.owner as { full_name?: string; email?: string } | null
+                return (
+                  <tr
+                    key={client.id}
+                    onClick={() => router.push(`/clients/${client.id}`)}
+                    className="hover:bg-violet-50/40 transition-colors cursor-pointer group"
+                  >
+                    <td className="px-6 py-4">
+                      <p className="font-semibold text-gray-900 group-hover:text-violet-600 transition-colors">{client.name}</p>
+                      {client.industry && <p className="text-xs text-gray-400 mt-0.5">{client.industry}</p>}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-600">{client.country ?? '—'}</td>
+                    <td className="px-4 py-4 text-sm text-gray-600">{client.sales_spoc ?? '—'}</td>
+                    <td className="px-4 py-4 text-sm text-gray-600">{owner?.full_name ?? owner?.email ?? '—'}</td>
+                    <td className="px-4 py-4">
+                      <span className="text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200 px-2 py-0.5 rounded-full">
+                        {client.handed_over_to_kam ?? 'Unassigned'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-600">{formatDate(client.handover_date)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+      </>
+      )}
     </div>
   )
 }

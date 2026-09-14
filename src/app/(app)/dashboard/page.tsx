@@ -47,16 +47,17 @@ export default async function DashboardPage() {
 
   // Compute effective status for each client
   const clientsWithStatus = rawClients.map((c) => {
-    const { status, isAuto } = effectiveStatus(
+    const { status, isAuto, overdueDays } = effectiveStatus(
       c.is_handed_over,
       c.status_override ?? null,
       c.kickoff_date,
       c.plan_steps ?? [],
     )
-    return { ...c, _effectiveStatus: status, _isAuto: isAuto }
+    return { ...c, _effectiveStatus: status, _isAuto: isAuto, _overdueDays: overdueDays }
   })
 
   const activeClients = clientsWithStatus.filter((c) => !c.is_handed_over)
+  const handedOverClients = clientsWithStatus.filter((c) => c.is_handed_over)
 
   const counts = {
     active:    activeClients.length,
@@ -95,7 +96,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Table with filters */}
-      {activeClients.length === 0 ? (
+      {activeClients.length === 0 && handedOverClients.length === 0 ? (
         <div className="py-20 text-center bg-white rounded-xl border border-gray-200">
           <Users className="w-12 h-12 text-gray-200 mx-auto mb-4" />
           <p className="text-gray-500 font-medium">No clients found</p>
@@ -108,6 +109,7 @@ export default async function DashboardPage() {
       ) : (
         <DashboardTable
           clients={activeClients as any}
+          handedOverClients={handedOverClients as any}
           isAdmin={profile?.role === 'admin'}
           isVisitor={profile?.role === 'visitor'}
           userId={profile?.id ?? null}

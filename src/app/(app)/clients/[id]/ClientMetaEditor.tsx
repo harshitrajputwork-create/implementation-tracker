@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Pencil, Check, X, ExternalLink } from 'lucide-react'
-import { updateClientMetaAction } from './actions'
+import { Pencil, Check, X, ExternalLink, Trash2 } from 'lucide-react'
+import { updateClientMetaAction, deleteClientAction } from './actions'
 import type { Client, Profile, ConfigOption } from '@/lib/types'
 
 const TICKET_SIZE_CFG: Record<string, { label: string; color: string }> = {
@@ -29,11 +29,16 @@ interface Props {
   configOptions: ConfigOption[]
   canEdit: boolean
   compact?: boolean
+  isAdmin?: boolean
 }
 
-export default function ClientMetaEditor({ client, members, configOptions, canEdit, compact }: Props) {
+export default function ClientMetaEditor({ client, members, configOptions, canEdit, compact, isAdmin }: Props) {
   const [open, setOpen]       = useState(false)
   const [isPending, start]    = useTransition()
+  const [showDelete, setShowDelete]     = useState(false)
+  const [confirmText, setConfirmText]   = useState('')
+  const [deleteError, setDeleteError]   = useState<string | null>(null)
+  const [deletePending, startDelete]    = useTransition()
 
   const [name,       setName]       = useState(client.name)
   const [industry,   setIndustry]   = useState(client.industry ?? '')
@@ -73,6 +78,15 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
         account_url: accountUrl.trim() || null,
       })
       setOpen(false)
+    })
+  }
+
+  function handleDelete() {
+    if (confirmText !== client.name) return
+    setDeleteError(null)
+    startDelete(async () => {
+      const result = await deleteClientAction(client.id)
+      if (result?.error) setDeleteError(result.error)
     })
   }
 
@@ -207,6 +221,55 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
               <Field label="Notes">
                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={`${inputCls} resize-none`} />
               </Field>
+
+              {/* Danger zone — admin only */}
+              {isAdmin && (
+                <div className="border border-red-200 rounded-xl p-4 bg-red-50/50">
+                  <p className="text-xs font-semibold text-red-700 mb-2">Danger zone</p>
+                  {!showDelete ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowDelete(true)}
+                      className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 font-medium"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Delete this client
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-xs text-red-700">
+                        This permanently deletes <strong>{client.name}</strong> and everything attached to it — plan steps, deviation log, SPOCs, notes, activity history. This cannot be undone.
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Type <strong>{client.name}</strong> to confirm.
+                      </p>
+                      <input
+                        value={confirmText}
+                        onChange={(e) => setConfirmText(e.target.value)}
+                        placeholder={client.name}
+                        className={`${inputCls} border-red-200 focus:ring-red-400`}
+                      />
+                      {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleDelete}
+                          disabled={confirmText !== client.name || deletePending}
+                          className="px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 disabled:opacity-40 transition-colors"
+                        >
+                          {deletePending ? 'Deleting…' : 'Permanently delete'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowDelete(false); setConfirmText(''); setDeleteError(null) }}
+                          className="text-xs text-gray-400 hover:text-gray-600 px-2"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">

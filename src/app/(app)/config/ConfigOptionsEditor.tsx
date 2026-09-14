@@ -13,6 +13,7 @@ const SECTION_LABELS: Record<string, string> = {
   sales_spoc: 'Sales SPOC',
   country: 'Country',
   module: 'Modules',
+  kam: 'KAM',
 }
 
 function OptionRow({ opt, onDelete }: { opt: ConfigOption; onDelete: () => void }) {

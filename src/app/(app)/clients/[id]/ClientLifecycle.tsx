@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import type { Client, Profile } from '@/lib/types'
+import type { Client, Profile, ConfigOption } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
 import { markHandedOverAction } from './actions'
 
@@ -9,9 +9,11 @@ interface Props {
   client: Client
   owner: Profile | null
   canEdit: boolean
+  configOptions: ConfigOption[]
 }
 
-export default function ClientLifecycle({ client, owner, canEdit }: Props) {
+export default function ClientLifecycle({ client, owner, canEdit, configOptions }: Props) {
+  const kamOptions = configOptions.filter((o) => o.config_key === 'kam')
   const [showForm, setShowForm] = useState(false)
   const [kamName, setKamName]   = useState(client.handed_over_to_kam ?? '')
   const [kamDate, setKamDate]   = useState(
@@ -88,12 +90,19 @@ export default function ClientLifecycle({ client, owner, canEdit }: Props) {
               {node.key === 'kam' && !node.done && canEdit && (
                 showForm ? (
                   <div className="mt-1.5 space-y-1">
-                    <input
+                    <select
                       value={kamName}
                       onChange={(e) => setKamName(e.target.value)}
-                      placeholder="KAM name"
-                      className="w-full text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-violet-400"
-                    />
+                      className="w-full text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-violet-400 bg-white"
+                    >
+                      <option value="">Select KAM…</option>
+                      {kamOptions.map((o) => (
+                        <option key={o.id} value={o.label}>{o.label}</option>
+                      ))}
+                      {kamName && !kamOptions.some((o) => o.label === kamName) && (
+                        <option value={kamName}>{kamName}</option>
+                      )}
+                    </select>
                     <input
                       type="date"
                       value={kamDate}

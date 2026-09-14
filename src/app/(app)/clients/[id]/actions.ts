@@ -2,6 +2,7 @@
 
 import { createClient, getSessionUser } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import type { ClientStatus, StepStatus, DeviationCause } from '@/lib/types'
 
 type SB = Awaited<ReturnType<typeof createClient>>
@@ -203,6 +204,25 @@ export async function updateClientMetaAction(
   if (user) await logAction(supabase, clientId, user.id, 'updated client details')
   revalidatePath(`/clients/${clientId}`)
   revalidatePath('/dashboard')
+}
+
+export async function deleteClientAction(clientId: string): Promise<{ error?: string }> {
+  const { supabase, user } = await getSessionUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (profile?.role !== 'admin') return { error: 'Only admins can delete clients' }
+
+  const { error, count } = await supabase
+    .from('clients')
+    .delete({ count: 'exact' })
+    .eq('id', clientId)
+
+  if (error) return { error: error.message }
+  if (!count) return { error: 'Delete was blocked — no rows removed' }
+
+  revalidatePath('/dashboard')
+  redirect('/dashboard')
 }
 
 // ── Client SPOCs ──────────────────────────────────────────────────────────────

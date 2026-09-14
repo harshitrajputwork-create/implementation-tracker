@@ -60,11 +60,11 @@ function parseDayRange(range: string): { startDay: number; endDay: number } {
   return { startDay: day, endDay: day }
 }
 
-export function computeAutoStatus(
+export function computeOverdueDays(
   kickoffDate: string | null,
   steps: Array<{ status: string; ideated_day_range: string }>,
-): ClientStatus {
-  if (!kickoffDate || steps.length === 0) return 'on_track'
+): number {
+  if (!kickoffDate || steps.length === 0) return 0
 
   let maxOverdue = 0
   const today = new Date()
@@ -79,6 +79,14 @@ export function computeAutoStatus(
     if (overdue > maxOverdue) maxOverdue = overdue
   }
 
+  return maxOverdue
+}
+
+export function computeAutoStatus(
+  kickoffDate: string | null,
+  steps: Array<{ status: string; ideated_day_range: string }>,
+): ClientStatus {
+  const maxOverdue = computeOverdueDays(kickoffDate, steps)
   if (maxOverdue > 5) return 'blocked_on_client'
   if (maxOverdue > 0) return 'at_risk'
   return 'on_track'
@@ -89,8 +97,17 @@ export function effectiveStatus(
   statusOverride: ClientStatus | null,
   kickoffDate: string | null,
   steps: Array<{ status: string; ideated_day_range: string }>,
-): { status: ClientStatus; isAuto: boolean } {
-  if (isHandedOver) return { status: 'handed_over', isAuto: false }
-  if (statusOverride) return { status: statusOverride, isAuto: false }
-  return { status: computeAutoStatus(kickoffDate, steps), isAuto: true }
+): { status: ClientStatus; isAuto: boolean; overdueDays: number } {
+  const overdueDays = computeOverdueDays(kickoffDate, steps)
+  if (isHandedOver) return { status: 'handed_over', isAuto: false, overdueDays }
+  if (statusOverride) return { status: statusOverride, isAuto: false, overdueDays }
+  return { status: computeAutoStatus(kickoffDate, steps), isAuto: true, overdueDays }
+}
+
+export function formatOverdue(days: number): string {
+  if (days <= 0) return ''
+  if (days < 30) return `${days}d overdue`
+  const months = Math.floor(days / 30)
+  const rem = days % 30
+  return rem === 0 ? `${months}mo overdue` : `${months}mo ${rem}d overdue`
 }

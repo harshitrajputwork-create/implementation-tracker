@@ -11,7 +11,7 @@ import ClientMetaEditor, { TicketSizeBadge } from './ClientMetaEditor'
 import ClientSpocs from './ClientSpocs'
 import ClientNotes from './ClientNotes'
 import ClientLifecycle from './ClientLifecycle'
-import { formatDate } from '@/lib/utils'
+import { formatDate, effectiveStatus } from '@/lib/utils'
 import { ChevronLeft, FileText, Send, MapPin, Package, ExternalLink } from 'lucide-react'
 import type { Client, PlanStep, DeviationLogEntry, RolloutConfirmation, Profile, UseCase, ClientUseCase, ActivityEntry, ConfigOption, ClientSpoc } from '@/lib/types'
 import {
@@ -110,6 +110,13 @@ export default async function ClientDetailPage({
   }
 
   const owner = typedClient.owner as Profile | null
+  const isAdmin = profile?.role === 'admin'
+  const { status: headerStatus, overdueDays } = effectiveStatus(
+    typedClient.is_handed_over,
+    typedClient.status_override,
+    typedClient.kickoff_date,
+    typedSteps.map((s) => ({ status: s.status, ideated_day_range: s.ideated_day_range })),
+  )
 
   return (
     <div className="p-8 w-full">
@@ -133,9 +140,10 @@ export default async function ClientDetailPage({
               members={members}
               configOptions={configOptions}
               canEdit={canEdit}
+              isAdmin={isAdmin}
               compact
             />
-            <StatusBadge status={typedClient.status} />
+            <StatusBadge status={headerStatus} overdueDays={overdueDays} />
             {typedClient.ticket_size && <TicketSizeBadge size={typedClient.ticket_size} />}
             {typedClient.account_url && (
               <a
@@ -261,6 +269,7 @@ export default async function ClientDetailPage({
               client={typedClient}
               owner={owner}
               canEdit={canEdit}
+              configOptions={configOptions}
             />
             <HandoverSection
               client={typedClient}
