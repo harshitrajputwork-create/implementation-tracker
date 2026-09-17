@@ -45,6 +45,11 @@ export default async function PlannerPage() {
     personSuggestions = [...new Set(tasks.map((t) => t.person).filter((v): v is string => !!v))]
   }
 
+  const accountSuggestions = [...new Set([
+    ...clients.map((c) => c.name),
+    ...tasks.map((t) => t.account_name).filter((v): v is string => !!v),
+  ])]
+
   return (
     <div className="p-8 max-w-4xl">
       <div className="flex items-center gap-3 mb-8">
@@ -63,6 +68,7 @@ export default async function PlannerPage() {
         noteDeadlines={noteDeadlines}
         teamSuggestions={teamSuggestions}
         personSuggestions={personSuggestions}
+        accountSuggestions={accountSuggestions}
       />
     </div>
   )

@@ -8,6 +8,7 @@ export async function addPlannerTaskAction(fields: {
   team?: string
   person?: string
   clientId?: string | null
+  accountName?: string | null
   task: string
   priority: TaskPriority
   deadline?: string | null
@@ -20,6 +21,7 @@ export async function addPlannerTaskAction(fields: {
     team: fields.team?.trim() || null,
     person: fields.person?.trim() || null,
     client_id: fields.clientId || null,
+    account_name: fields.accountName?.trim() || null,
     task: fields.task.trim(),
     priority: fields.priority,
     deadline: fields.deadline || null,
@@ -34,6 +36,7 @@ export async function updatePlannerTaskAction(
     team?: string | null
     person?: string | null
     clientId?: string | null
+    accountName?: string | null
     task?: string
     priority?: TaskPriority
     deadline?: string | null
@@ -46,6 +49,7 @@ export async function updatePlannerTaskAction(
   if (fields.team !== undefined) payload.team = fields.team?.trim() || null
   if (fields.person !== undefined) payload.person = fields.person?.trim() || null
   if (fields.clientId !== undefined) payload.client_id = fields.clientId || null
+  if (fields.accountName !== undefined) payload.account_name = fields.accountName?.trim() || null
   if (fields.task !== undefined) payload.task = fields.task.trim()
   if (fields.priority !== undefined) payload.priority = fields.priority
   if (fields.deadline !== undefined) payload.deadline = fields.deadline || null

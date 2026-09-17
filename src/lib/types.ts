@@ -187,6 +187,7 @@ export interface PlannerTask {
   team: string | null
   person: string | null
   client_id: string | null
+  account_name: string | null
   task: string
   priority: TaskPriority
   deadline: string | null

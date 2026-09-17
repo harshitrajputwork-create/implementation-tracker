@@ -34,12 +34,23 @@ interface Props {
   noteDeadlines: NoteDeadline[]
   teamSuggestions: string[]
   personSuggestions: string[]
+  accountSuggestions: string[]
 }
 
 const inputCls = 'text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white'
 
+/** Matches typed text to a tracked client by exact name (case-insensitive) so it
+ *  stays linked and clickable; anything else is just kept as free-text label —
+ *  requests come in about plenty of accounts that aren't in the tracker. */
+function resolveAccount(value: string, clients: ClientOption[]): { clientId: string | null; accountName: string | null } {
+  const trimmed = value.trim()
+  if (!trimmed) return { clientId: null, accountName: null }
+  const match = clients.find((c) => c.name.toLowerCase() === trimmed.toLowerCase())
+  return match ? { clientId: match.id, accountName: null } : { clientId: null, accountName: trimmed }
+}
+
 export default function PlannerClient({
-  initialTasks, clients, noteDeadlines: initialNoteDeadlines, teamSuggestions, personSuggestions,
+  initialTasks, clients, noteDeadlines: initialNoteDeadlines, teamSuggestions, personSuggestions, accountSuggestions,
 }: Props) {
   const [tasks, setTasks] = useState(initialTasks)
   const [noteDeadlines, setNoteDeadlines] = useState(initialNoteDeadlines)
@@ -50,7 +61,7 @@ export default function PlannerClient({
   // Quick-add form
   const [team, setTeam] = useState('')
   const [person, setPerson] = useState('')
-  const [clientId, setClientId] = useState('')
+  const [account, setAccount] = useState('')
   const [priority, setPriority] = useState<TaskPriority>('Medium')
   const [deadline, setDeadline] = useState('')
   const [task, setTask] = useState('')
@@ -75,17 +86,18 @@ export default function PlannerClient({
 
   function addTask() {
     if (!task.trim()) return
+    const { clientId, accountName } = resolveAccount(account, clients)
     const optimistic: PlannerTask = {
       id: `temp-${Date.now()}`,
       user_id: '', team: team.trim() || null, person: person.trim() || null,
-      client_id: clientId || null, task: task.trim(), priority, deadline: deadline || null,
+      client_id: clientId, account_name: accountName, task: task.trim(), priority, deadline: deadline || null,
       status: 'open', sort_order: 0, created_at: new Date().toISOString(),
     }
     setTasks((prev) => [optimistic, ...prev])
     start(async () => {
-      await addPlannerTaskAction({ team, person, clientId: clientId || null, task, priority, deadline: deadline || null })
+      await addPlannerTaskAction({ team, person, clientId, accountName, task, priority, deadline: deadline || null })
     })
-    setTeam(''); setPerson(''); setClientId(''); setPriority('Medium'); setDeadline(''); setTask('')
+    setTeam(''); setPerson(''); setAccount(''); setPriority('Medium'); setDeadline(''); setTask('')
   }
 
   function toggleDone(t: PlannerTask) {
@@ -114,6 +126,9 @@ export default function PlannerClient({
       <datalist id="planner-person-options">
         {personSuggestions.map((p) => <option key={p} value={p} />)}
       </datalist>
+      <datalist id="planner-account-options">
+        {accountSuggestions.map((a) => <option key={a} value={a} />)}
+      </datalist>
 
       {/* Quick add */}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
@@ -121,10 +136,7 @@ export default function PlannerClient({
         <div className="grid grid-cols-6 gap-2 mb-2">
           <input value={team} onChange={(e) => setTeam(e.target.value)} placeholder="Team" list="planner-team-options" className={inputCls} />
           <input value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Person" list="planner-person-options" className={inputCls} />
-          <select value={clientId} onChange={(e) => setClientId(e.target.value)} className={inputCls}>
-            <option value="">Account — none</option>
-            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <input value={account} onChange={(e) => setAccount(e.target.value)} placeholder="Account (any name)" list="planner-account-options" className={inputCls} />
           <select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} className={inputCls}>
             {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
@@ -189,7 +201,9 @@ export default function PlannerClient({
                 onEdit={() => setEditingId(t.id)}
                 onCancelEdit={() => setEditingId(null)}
                 onSaved={(fields) => {
-                  setTasks((prev) => prev.map((x) => (x.id === t.id ? { ...x, ...fields, client_id: fields.clientId ?? x.client_id } : x)))
+                  setTasks((prev) => prev.map((x) => (x.id === t.id
+                    ? { ...x, ...fields, client_id: fields.clientId ?? null, account_name: fields.accountName ?? null }
+                    : x)))
                   start(async () => { await updatePlannerTaskAction(t.id, fields) })
                   setEditingId(null)
                 }}
@@ -247,19 +261,20 @@ function TaskRow({
   editing: boolean
   onEdit: () => void
   onCancelEdit: () => void
-  onSaved: (fields: { team?: string | null; person?: string | null; clientId?: string | null; task?: string; priority?: TaskPriority; deadline?: string | null }) => void
+  onSaved: (fields: { team?: string | null; person?: string | null; clientId?: string | null; accountName?: string | null; task?: string; priority?: TaskPriority; deadline?: string | null }) => void
   onToggleDone: () => void
   onDelete: () => void
 }) {
+  const clientName = clients.find((c) => c.id === task.client_id)?.name
+
   const [team, setTeam] = useState(task.team ?? '')
   const [person, setPerson] = useState(task.person ?? '')
-  const [clientId, setClientId] = useState(task.client_id ?? '')
+  const [account, setAccount] = useState(clientName ?? task.account_name ?? '')
   const [priority, setPriority] = useState<TaskPriority>(task.priority)
   const [deadline, setDeadline] = useState(task.deadline ?? '')
   const [text, setText] = useState(task.task)
   const [confirmDel, setConfirmDel] = useState(false)
 
-  const clientName = clients.find((c) => c.id === task.client_id)?.name
   const isDone = task.status === 'done'
   const overdue = task.deadline && !isDone && task.deadline < new Date().toISOString().split('T')[0]
 
@@ -269,10 +284,7 @@ function TaskRow({
         <div className="grid grid-cols-5 gap-2 mb-2">
           <input value={team} onChange={(e) => setTeam(e.target.value)} placeholder="Team" list="planner-team-options" className={inputCls} />
           <input value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Person" list="planner-person-options" className={inputCls} />
-          <select value={clientId} onChange={(e) => setClientId(e.target.value)} className={inputCls}>
-            <option value="">Account — none</option>
-            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <input value={account} onChange={(e) => setAccount(e.target.value)} placeholder="Account (any name)" list="planner-account-options" className={inputCls} />
           <select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} className={inputCls}>
             {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
@@ -281,7 +293,10 @@ function TaskRow({
         <input value={text} onChange={(e) => setText(e.target.value)} className={`${inputCls} w-full mb-2`} />
         <div className="flex gap-2">
           <button
-            onClick={() => onSaved({ team, person, clientId: clientId || null, task: text, priority, deadline: deadline || null })}
+            onClick={() => {
+              const { clientId, accountName } = resolveAccount(account, clients)
+              onSaved({ team, person, clientId, accountName, task: text, priority, deadline: deadline || null })
+            }}
             className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700"
           >
             <Check className="w-3.5 h-3.5" /> Save
@@ -307,9 +322,11 @@ function TaskRow({
           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${PRIORITY_COLOR[task.priority]}`}>{task.priority}</span>
           {task.team && <span className="text-xs text-gray-400">· {task.team}</span>}
           {task.person && <span className="text-xs text-gray-400">· {task.person}</span>}
-          {clientName && (
+          {clientName ? (
             <Link href={`/clients/${task.client_id}`} className="text-xs text-blue-600 hover:text-blue-700">· {clientName}</Link>
-          )}
+          ) : task.account_name ? (
+            <span className="text-xs text-gray-400">· {task.account_name}</span>
+          ) : null}
           {task.deadline && (
             <span className={`text-xs ${overdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
               · {overdue ? 'Overdue' : 'Due'} {formatDate(task.deadline)}
