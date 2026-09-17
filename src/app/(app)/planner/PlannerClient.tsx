@@ -6,6 +6,7 @@ import { Plus, Trash2, Check, ArrowUpDown, Flag, CalendarClock, X, Pencil, Exter
 import { addPlannerTaskAction, updatePlannerTaskAction, togglePlannerTaskAction, deletePlannerTaskAction } from './actions'
 import { toggleNoteDeadlineDoneAction } from '../clients/[id]/actions'
 import { formatDate } from '@/lib/utils'
+import { resolveAccount, type ClientOption } from '@/lib/planner-utils'
 import type { PlannerTask, TaskPriority } from '@/lib/types'
 
 const PRIORITIES: TaskPriority[] = ['Urgent', 'High', 'Medium', 'Low']
@@ -16,8 +17,6 @@ const PRIORITY_COLOR: Record<TaskPriority, string> = {
   Medium: 'bg-amber-100 text-amber-700 border-amber-200',
   Low:    'bg-gray-100 text-gray-600 border-gray-200',
 }
-
-interface ClientOption { id: string; name: string }
 
 interface NoteDeadline {
   id: string
@@ -38,16 +37,6 @@ interface Props {
 }
 
 const inputCls = 'text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white'
-
-/** Matches typed text to a tracked client by exact name (case-insensitive) so it
- *  stays linked and clickable; anything else is just kept as free-text label —
- *  requests come in about plenty of accounts that aren't in the tracker. */
-function resolveAccount(value: string, clients: ClientOption[]): { clientId: string | null; accountName: string | null } {
-  const trimmed = value.trim()
-  if (!trimmed) return { clientId: null, accountName: null }
-  const match = clients.find((c) => c.name.toLowerCase() === trimmed.toLowerCase())
-  return match ? { clientId: match.id, accountName: null } : { clientId: null, accountName: trimmed }
-}
 
 export default function PlannerClient({
   initialTasks, clients, noteDeadlines: initialNoteDeadlines, teamSuggestions, personSuggestions, accountSuggestions,

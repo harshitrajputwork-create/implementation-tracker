@@ -2,6 +2,7 @@ import { getSessionUser } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { NotebookPen } from 'lucide-react'
 import PlannerClient from './PlannerClient'
+import BookmarkletLink from './BookmarkletLink'
 import { IS_DEV_BYPASS, MOCK_PROFILE, MOCK_CLIENTS } from '@/lib/dev-mock'
 import type { PlannerTask } from '@/lib/types'
 
@@ -60,6 +61,10 @@ export default async function PlannerPage() {
           <h1 className="text-2xl font-bold text-gray-900">Planner</h1>
           <p className="text-gray-500 text-sm">Your personal task list — private to you, across every team and account.</p>
         </div>
+      </div>
+
+      <div className="mb-6">
+        <BookmarkletLink />
       </div>
 
       <PlannerClient
