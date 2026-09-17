@@ -139,7 +139,7 @@ export default async function ClientDetailPage({
       </Link>
 
       {/* Client header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8">
         <div className="flex-1 min-w-0">
           {/* Row 1: name + pencil + badges */}
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -198,17 +198,17 @@ export default async function ClientDetailPage({
         </div>
 
         {/* Export buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full md:w-auto">
           <Link
             href={`/clients/${id}/client-update`}
-            className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors text-sm font-medium"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors text-sm font-medium flex-1 md:flex-none"
           >
             <Send className="w-4 h-4" />
             Client Update
           </Link>
           <Link
             href={`/clients/${id}/journey-report`}
-            className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium flex-1 md:flex-none"
           >
             <FileText className="w-4 h-4" />
             Journey Report
@@ -261,7 +261,7 @@ export default async function ClientDetailPage({
           canEdit={canEdit}
         />
       ) : (
-        <div className="flex gap-8 items-start">
+        <div className="flex flex-col md:flex-row gap-8 md:items-start">
           {/* Left: Plan timeline — fills all remaining space */}
           <div className="flex-1 min-w-0 space-y-8">
             <PlanTimeline
@@ -280,7 +280,7 @@ export default async function ClientDetailPage({
           </div>
 
           {/* Right: Actions — fixed width */}
-          <div className="w-72 flex-shrink-0 space-y-4">
+          <div className="w-full md:w-72 flex-shrink-0 space-y-4">
             <ClientLifecycle
               client={typedClient}
               owner={owner}

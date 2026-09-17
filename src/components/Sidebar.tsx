@@ -12,6 +12,7 @@ import {
   LayoutDashboard, Plus, LogOut, ClipboardList,
   BookOpen, Sparkles, ChevronDown,
   PanelLeftClose, PanelLeftOpen, Settings, ChevronRight, NotebookPen,
+  Menu, X,
 } from 'lucide-react'
 
 interface SidebarClient { id: string; name: string; status: string }
@@ -40,12 +41,18 @@ export default function Sidebar({ user, clients }: SidebarProps) {
   const [pinned, setPinned]           = useState(false)
   const [hovered, setHovered]         = useState(false)
   const [clientsOpen, setClientsOpen] = useState(true)
+  const [mobileOpen, setMobileOpen]   = useState(false)
 
   useEffect(() => {
     setPinned(localStorage.getItem('sidebar_pinned') === 'true')
   }, [])
 
-  const expanded = pinned || hovered
+  // Close the mobile drawer whenever the route changes (link click, back/forward).
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
+
+  const expanded = pinned || hovered || mobileOpen
 
   function togglePin() {
     const next = !pinned
@@ -90,14 +97,39 @@ export default function Sidebar({ user, clients }: SidebarProps) {
   }
 
   return (
-    <div
-      className={cn(
-        'flex-shrink-0 bg-slate-900 flex flex-col h-full border-r border-slate-800 transition-all duration-200 overflow-hidden',
-        expanded ? 'w-60' : 'w-[52px]',
+    <>
+      {/* Mobile top bar — replaces the docked sidebar below md; zero effect at md and up */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-30 h-14 bg-slate-900 border-b border-slate-800 flex items-center gap-3 px-4">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="text-slate-300 hover:text-white p-1.5 -ml-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+          <ClipboardList className="w-3.5 h-3.5 text-white" />
+        </div>
+        <p className="text-white font-semibold text-sm">Impl. Tracker</p>
+      </div>
+
+      {/* Backdrop — mobile only, tap to close */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/40 z-40"
+          onClick={() => setMobileOpen(false)}
+        />
       )}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
+
+      <div
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 md:static md:z-auto',
+          'flex-shrink-0 bg-slate-900 flex flex-col h-full border-r border-slate-800 transition-all duration-200 overflow-hidden',
+          expanded ? 'w-60' : 'w-[52px]',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+        )}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
       {/* Brand */}
       <div className={cn('py-5 border-b border-slate-800 flex-shrink-0', expanded ? 'px-5' : 'px-[10px]')}>
         <div className="flex items-center gap-3">
@@ -105,10 +137,18 @@ export default function Sidebar({ user, clients }: SidebarProps) {
             <ClipboardList className="w-4 h-4 text-white" />
           </div>
           {expanded && (
-            <div className="min-w-0 overflow-hidden">
+            <div className="min-w-0 overflow-hidden flex-1">
               <p className="text-white font-semibold text-sm leading-tight whitespace-nowrap">Impl. Tracker</p>
               <p className="text-slate-400 text-xs">Taqtics</p>
             </div>
+          )}
+          {mobileOpen && (
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors flex-shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
           )}
         </div>
       </div>
@@ -299,6 +339,7 @@ export default function Sidebar({ user, clients }: SidebarProps) {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   )
 }

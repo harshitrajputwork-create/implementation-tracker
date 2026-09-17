@@ -227,6 +227,7 @@ export default function DashboardTable({ clients, handedOverClients = [], isAdmi
         {displayed.length === 0 ? (
           <div className="py-16 text-center text-gray-400 text-sm">No clients match the selected filters.</div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
@@ -313,6 +314,7 @@ export default function DashboardTable({ clients, handedOverClients = [], isAdmi
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
       </>
@@ -353,6 +355,7 @@ export default function DashboardTable({ clients, handedOverClients = [], isAdmi
             {handedOverClients.length === 0 ? 'No accounts handed over yet.' : 'No accounts match the selected filters.'}
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
@@ -391,6 +394,7 @@ export default function DashboardTable({ clients, handedOverClients = [], isAdmi
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
       </>

@@ -88,7 +88,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <StatCard label="Active Clients" value={counts.active}   icon={Users}          color="text-blue-600"  bg="bg-blue-50"  />
         <StatCard label="On Track"        value={counts.on_track} icon={TrendingUp}     color="text-green-600" bg="bg-green-50" />
         <StatCard label="At Risk"         value={counts.at_risk}  icon={AlertTriangle}  color="text-amber-600" bg="bg-amber-50" />

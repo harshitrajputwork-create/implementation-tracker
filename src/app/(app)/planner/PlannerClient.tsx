@@ -129,7 +129,7 @@ export default function PlannerClient({
       {/* Quick add */}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Add a task</p>
-        <div className="grid grid-cols-6 gap-2 mb-2">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-2">
           <input value={team} onChange={(e) => setTeam(e.target.value)} placeholder="Team" list="planner-team-options" className={inputCls} />
           <input value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Person" list="planner-person-options" className={inputCls} />
           <input value={account} onChange={(e) => setAccount(e.target.value)} placeholder="Account (any name)" list="planner-account-options" className={inputCls} />
@@ -288,7 +288,7 @@ function TaskRow({
   if (editing) {
     return (
       <div className="px-4 py-3 bg-blue-50/50">
-        <div className="grid grid-cols-5 gap-2 mb-2">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2">
           <input value={team} onChange={(e) => setTeam(e.target.value)} placeholder="Team" list="planner-team-options" className={inputCls} />
           <input value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Person" list="planner-person-options" className={inputCls} />
           <input value={account} onChange={(e) => setAccount(e.target.value)} placeholder="Account (any name)" list="planner-account-options" className={inputCls} />
