@@ -12,11 +12,12 @@ export async function addPlannerTaskAction(fields: {
   task: string
   priority: TaskPriority
   deadline?: string | null
-}) {
+}): Promise<{ error?: string }> {
   const { supabase, user } = await getSessionUser()
-  if (!user || !fields.task.trim()) return
+  if (!user) return { error: 'Not authenticated' }
+  if (!fields.task.trim()) return { error: 'Task text is required' }
 
-  await supabase.from('planner_tasks').insert({
+  const { error } = await supabase.from('planner_tasks').insert({
     user_id: user.id,
     team: fields.team?.trim() || null,
     person: fields.person?.trim() || null,
@@ -27,7 +28,10 @@ export async function addPlannerTaskAction(fields: {
     deadline: fields.deadline || null,
   })
 
+  if (error) return { error: error.message }
+
   revalidatePath('/planner')
+  return {}
 }
 
 export async function updatePlannerTaskAction(
@@ -41,9 +45,9 @@ export async function updatePlannerTaskAction(
     priority?: TaskPriority
     deadline?: string | null
   },
-) {
+): Promise<{ error?: string }> {
   const { supabase, user } = await getSessionUser()
-  if (!user) return
+  if (!user) return { error: 'Not authenticated' }
 
   const payload: Record<string, unknown> = {}
   if (fields.team !== undefined) payload.team = fields.team?.trim() || null
@@ -54,8 +58,11 @@ export async function updatePlannerTaskAction(
   if (fields.priority !== undefined) payload.priority = fields.priority
   if (fields.deadline !== undefined) payload.deadline = fields.deadline || null
 
-  await supabase.from('planner_tasks').update(payload).eq('id', taskId).eq('user_id', user.id)
+  const { error } = await supabase.from('planner_tasks').update(payload).eq('id', taskId).eq('user_id', user.id)
+  if (error) return { error: error.message }
+
   revalidatePath('/planner')
+  return {}
 }
 
 export async function togglePlannerTaskAction(taskId: string, done: boolean) {

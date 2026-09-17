@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Check, ChevronDown, ChevronUp, NotebookPen, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, NotebookPen, X, AlertTriangle } from 'lucide-react'
 import { addPlannerTaskAction } from '../(app)/planner/actions'
 import { resolveAccount, type ClientOption } from '@/lib/planner-utils'
 import type { TaskPriority } from '@/lib/types'
@@ -37,6 +37,7 @@ export default function QuickCapture({ clients, teamSuggestions, personSuggestio
   const [priority, setPriority] = useState<TaskPriority>('Medium')
   const [deadline, setDeadline] = useState('')
   const [savedCount, setSavedCount] = useState(0)
+  const [error, setError] = useState<string | null>(null)
   const [isPending, start] = useTransition()
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -44,14 +45,20 @@ export default function QuickCapture({ clients, teamSuggestions, personSuggestio
 
   function save() {
     if (!task.trim()) return
+    const text = task.trim()
     const { clientId, accountName } = resolveAccount(account, clients)
+    setError(null)
     start(async () => {
-      await addPlannerTaskAction({ team, person, clientId, accountName, task, priority, deadline: deadline || null })
+      const result = await addPlannerTaskAction({ team, person, clientId, accountName, task: text, priority, deadline: deadline || null })
+      if (result?.error) {
+        setError(result.error)
+        return
+      }
       setSavedCount((c) => c + 1)
+      setTask('')
+      // Keep team/person/account/priority — likely the same batch of context for the next note.
+      inputRef.current?.focus()
     })
-    setTask('')
-    // Keep team/person/account/priority — likely the same batch of context for the next note.
-    inputRef.current?.focus()
   }
 
   return (
@@ -132,6 +139,13 @@ export default function QuickCapture({ clients, teamSuggestions, personSuggestio
               {isPending ? 'Saving…' : 'Save'}
             </button>
           </div>
+
+          {error && (
+            <div className="flex items-start gap-1.5 mt-2.5 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
+              <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-red-700">Not saved — {error}</p>
+            </div>
+          )}
         </div>
 
         <p className="text-xs text-gray-400 text-center mt-3">Press Enter to save · goes straight to your Planner</p>

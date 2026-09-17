@@ -45,6 +45,7 @@ export default function PlannerClient({
   const [noteDeadlines, setNoteDeadlines] = useState(initialNoteDeadlines)
   const [sortMode, setSortMode] = useState<'manual' | 'deadline' | 'priority'>('manual')
   const [showDone, setShowDone] = useState(false)
+  const [addError, setAddError] = useState<string | null>(null)
   const [isPending, start] = useTransition()
 
   // Quick-add form
@@ -76,15 +77,21 @@ export default function PlannerClient({
   function addTask() {
     if (!task.trim()) return
     const { clientId, accountName } = resolveAccount(account, clients)
+    const tempId = `temp-${Date.now()}`
     const optimistic: PlannerTask = {
-      id: `temp-${Date.now()}`,
+      id: tempId,
       user_id: '', team: team.trim() || null, person: person.trim() || null,
       client_id: clientId, account_name: accountName, task: task.trim(), priority, deadline: deadline || null,
       status: 'open', sort_order: 0, created_at: new Date().toISOString(),
     }
     setTasks((prev) => [optimistic, ...prev])
+    setAddError(null)
     start(async () => {
-      await addPlannerTaskAction({ team, person, clientId, accountName, task, priority, deadline: deadline || null })
+      const result = await addPlannerTaskAction({ team, person, clientId, accountName, task, priority, deadline: deadline || null })
+      if (result?.error) {
+        setTasks((prev) => prev.filter((t) => t.id !== tempId))
+        setAddError(result.error)
+      }
     })
     setTeam(''); setPerson(''); setAccount(''); setPriority('Medium'); setDeadline(''); setTask('')
   }
@@ -145,6 +152,9 @@ export default function PlannerClient({
           placeholder="What needs to happen?"
           className={`${inputCls} w-full`}
         />
+        {addError && (
+          <p className="text-xs text-red-600 mt-2">Not saved — {addError}</p>
+        )}
       </div>
 
       {/* Sort + filter bar */}
@@ -190,10 +200,18 @@ export default function PlannerClient({
                 onEdit={() => setEditingId(t.id)}
                 onCancelEdit={() => setEditingId(null)}
                 onSaved={(fields) => {
+                  const previous = t
                   setTasks((prev) => prev.map((x) => (x.id === t.id
                     ? { ...x, ...fields, client_id: fields.clientId ?? null, account_name: fields.accountName ?? null }
                     : x)))
-                  start(async () => { await updatePlannerTaskAction(t.id, fields) })
+                  setAddError(null)
+                  start(async () => {
+                    const result = await updatePlannerTaskAction(t.id, fields)
+                    if (result?.error) {
+                      setTasks((prev) => prev.map((x) => (x.id === t.id ? previous : x)))
+                      setAddError(result.error)
+                    }
+                  })
                   setEditingId(null)
                 }}
                 onToggleDone={() => toggleDone(t)}
