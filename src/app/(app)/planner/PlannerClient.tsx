@@ -32,11 +32,15 @@ interface Props {
   initialTasks: PlannerTask[]
   clients: ClientOption[]
   noteDeadlines: NoteDeadline[]
+  teamSuggestions: string[]
+  personSuggestions: string[]
 }
 
 const inputCls = 'text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white'
 
-export default function PlannerClient({ initialTasks, clients, noteDeadlines: initialNoteDeadlines }: Props) {
+export default function PlannerClient({
+  initialTasks, clients, noteDeadlines: initialNoteDeadlines, teamSuggestions, personSuggestions,
+}: Props) {
   const [tasks, setTasks] = useState(initialTasks)
   const [noteDeadlines, setNoteDeadlines] = useState(initialNoteDeadlines)
   const [sortMode, setSortMode] = useState<'manual' | 'deadline' | 'priority'>('manual')
@@ -104,12 +108,19 @@ export default function PlannerClient({ initialTasks, clients, noteDeadlines: in
 
   return (
     <div className="space-y-6">
+      <datalist id="planner-team-options">
+        {teamSuggestions.map((t) => <option key={t} value={t} />)}
+      </datalist>
+      <datalist id="planner-person-options">
+        {personSuggestions.map((p) => <option key={p} value={p} />)}
+      </datalist>
+
       {/* Quick add */}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Add a task</p>
         <div className="grid grid-cols-6 gap-2 mb-2">
-          <input value={team} onChange={(e) => setTeam(e.target.value)} placeholder="Team" className={inputCls} />
-          <input value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Person" className={inputCls} />
+          <input value={team} onChange={(e) => setTeam(e.target.value)} placeholder="Team" list="planner-team-options" className={inputCls} />
+          <input value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Person" list="planner-person-options" className={inputCls} />
           <select value={clientId} onChange={(e) => setClientId(e.target.value)} className={inputCls}>
             <option value="">Account — none</option>
             {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -256,8 +267,8 @@ function TaskRow({
     return (
       <div className="px-4 py-3 bg-blue-50/50">
         <div className="grid grid-cols-5 gap-2 mb-2">
-          <input value={team} onChange={(e) => setTeam(e.target.value)} placeholder="Team" className={inputCls} />
-          <input value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Person" className={inputCls} />
+          <input value={team} onChange={(e) => setTeam(e.target.value)} placeholder="Team" list="planner-team-options" className={inputCls} />
+          <input value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Person" list="planner-person-options" className={inputCls} />
           <select value={clientId} onChange={(e) => setClientId(e.target.value)} className={inputCls}>
             <option value="">Account — none</option>
             {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

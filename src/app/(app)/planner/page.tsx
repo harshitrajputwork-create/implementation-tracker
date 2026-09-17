@@ -9,6 +9,8 @@ export default async function PlannerPage() {
   let tasks: PlannerTask[] = []
   let clients: { id: string; name: string }[] = []
   let noteDeadlines: { id: string; clientId: string; clientName: string; content: string; deadline: string; deadline_done: boolean }[] = []
+  let teamSuggestions: string[] = []
+  let personSuggestions: string[] = []
 
   if (IS_DEV_BYPASS) {
     clients = MOCK_CLIENTS.map((c) => ({ id: c.id, name: c.name }))
@@ -38,6 +40,9 @@ export default async function PlannerPage() {
       deadline: n.deadline,
       deadline_done: n.deadline_done,
     }))
+
+    teamSuggestions = [...new Set(tasks.map((t) => t.team).filter((v): v is string => !!v))]
+    personSuggestions = [...new Set(tasks.map((t) => t.person).filter((v): v is string => !!v))]
   }
 
   return (
@@ -52,7 +57,13 @@ export default async function PlannerPage() {
         </div>
       </div>
 
-      <PlannerClient initialTasks={tasks} clients={clients} noteDeadlines={noteDeadlines} />
+      <PlannerClient
+        initialTasks={tasks}
+        clients={clients}
+        noteDeadlines={noteDeadlines}
+        teamSuggestions={teamSuggestions}
+        personSuggestions={personSuggestions}
+      />
     </div>
   )
 }

@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { Pencil, Check, X, ExternalLink, Trash2 } from 'lucide-react'
 import { updateClientMetaAction, deleteClientAction } from './actions'
+import { TZ_AHEAD_OPTIONS, TZ_BEHIND_OPTIONS, TZ_SAME_AS_IST, WEEKDAYS, parseWeeklyOffs } from '@/lib/schedule-options'
 import type { Client, Profile, ConfigOption } from '@/lib/types'
 
 const TICKET_SIZE_CFG: Record<string, { label: string; color: string }> = {
@@ -51,8 +52,14 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
   const [country,    setCountry]    = useState(client.country ?? '')
   const [modules,    setModules]    = useState<string[]>(client.modules ?? [])
   const [accountUrl, setAccountUrl] = useState(client.account_url ?? '')
-  const [weeklyOffs, setWeeklyOffs] = useState(client.weekly_offs ?? '')
+  const [weeklyOffDays, setWeeklyOffDays] = useState<string[]>(parseWeeklyOffs(client.weekly_offs))
   const [tzOffset,   setTzOffset]   = useState(client.tz_offset ?? '')
+
+  function toggleWeeklyOffDay(day: string) {
+    setWeeklyOffDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
+    )
+  }
 
   const spocOptions    = configOptions.filter((o) => o.config_key === 'sales_spoc')
   const countryOptions = configOptions.filter((o) => o.config_key === 'country')
@@ -78,8 +85,8 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
         country: country || null,
         modules,
         account_url: accountUrl.trim() || null,
-        weekly_offs: weeklyOffs.trim() || null,
-        tz_offset: tzOffset.trim() || null,
+        weekly_offs: weeklyOffDays.length > 0 ? weeklyOffDays.join(', ') : null,
+        tz_offset: tzOffset || null,
       })
       setOpen(false)
     })
@@ -174,25 +181,39 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
                 </Field>
               </div>
 
-              {/* Timezone + Weekly offs row */}
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Timezone vs IST">
-                  <input
-                    value={tzOffset}
-                    onChange={(e) => setTzOffset(e.target.value)}
-                    placeholder="e.g. 2h 30m ahead of IST"
-                    className={`${inputCls} placeholder-gray-400`}
-                  />
-                </Field>
-                <Field label="Weekly offs">
-                  <input
-                    value={weeklyOffs}
-                    onChange={(e) => setWeeklyOffs(e.target.value)}
-                    placeholder="e.g. Closed Sat & Sun"
-                    className={`${inputCls} placeholder-gray-400`}
-                  />
-                </Field>
-              </div>
+              {/* Timezone */}
+              <Field label="Timezone vs IST">
+                <select value={tzOffset} onChange={(e) => setTzOffset(e.target.value)} className={inputCls}>
+                  <option value="">— none —</option>
+                  <option value={TZ_SAME_AS_IST}>{TZ_SAME_AS_IST}</option>
+                  <optgroup label="Ahead of IST">
+                    {TZ_AHEAD_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                  </optgroup>
+                  <optgroup label="Behind IST">
+                    {TZ_BEHIND_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                  </optgroup>
+                </select>
+              </Field>
+
+              {/* Weekly offs */}
+              <Field label="Weekly offs">
+                <div className="flex gap-1.5 flex-wrap">
+                  {WEEKDAYS.map((day) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => toggleWeeklyOffDay(day)}
+                      className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-all ${
+                        weeklyOffDays.includes(day)
+                          ? 'bg-gray-800 text-white border-gray-800'
+                          : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+              </Field>
 
               {/* Modules */}
               <Field label="Modules">

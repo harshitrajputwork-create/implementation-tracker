@@ -169,6 +169,15 @@ export interface ClientNoteEntry {
   created_at: string
 }
 
+export interface UpcomingReminder {
+  id: string
+  label: string
+  clientName: string | null
+  deadline: string
+  linkPath: string
+  overdue: boolean
+}
+
 export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Urgent'
 export type TaskStatus = 'open' | 'done'
 

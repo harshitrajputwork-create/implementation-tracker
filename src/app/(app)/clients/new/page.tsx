@@ -6,6 +6,7 @@ import Link from 'next/link'
 import SubmitButton from './SubmitButton'
 import { ChevronLeft, ExternalLink } from 'lucide-react'
 import { IS_DEV_BYPASS, MOCK_MEMBERS } from '@/lib/dev-mock'
+import { TZ_AHEAD_OPTIONS, TZ_BEHIND_OPTIONS, TZ_SAME_AS_IST, WEEKDAYS } from '@/lib/schedule-options'
 import type { Profile, ConfigOption } from '@/lib/types'
 
 const INDUSTRIES = [
@@ -37,7 +38,8 @@ async function createClientAction(formData: FormData) {
   const country = formData.get('country') as string
   const modules = formData.getAll('modules') as string[]
   const account_url = formData.get('account_url') as string
-  const weekly_offs = formData.get('weekly_offs') as string
+  const weekly_offs_days = formData.getAll('weekly_offs') as string[]
+  const weekly_offs = weekly_offs_days.length > 0 ? weekly_offs_days.join(', ') : ''
   const tz_offset = formData.get('tz_offset') as string
 
   if (IS_DEV_BYPASS) {
@@ -233,17 +235,33 @@ export default async function NewClientPage() {
               </div>
             </div>
 
-            {/* Timezone + Weekly offs */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Timezone vs IST</label>
-                <input name="tz_offset" placeholder="e.g. 2h 30m ahead of IST"
-                  className={`${inputCls} placeholder-gray-400`} />
-              </div>
-              <div>
-                <label className={labelCls}>Weekly offs</label>
-                <input name="weekly_offs" placeholder="e.g. Closed Sat & Sun"
-                  className={`${inputCls} placeholder-gray-400`} />
+            {/* Timezone */}
+            <div>
+              <label className={labelCls}>Timezone vs IST</label>
+              <select name="tz_offset" className={inputCls}>
+                <option value="">— none —</option>
+                <option value={TZ_SAME_AS_IST}>{TZ_SAME_AS_IST}</option>
+                <optgroup label="Ahead of IST">
+                  {TZ_AHEAD_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                </optgroup>
+                <optgroup label="Behind IST">
+                  {TZ_BEHIND_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                </optgroup>
+              </select>
+            </div>
+
+            {/* Weekly offs */}
+            <div>
+              <label className={labelCls}>Weekly offs</label>
+              <div className="flex gap-1.5 flex-wrap">
+                {WEEKDAYS.map((day) => (
+                  <label key={day} className="cursor-pointer">
+                    <input type="checkbox" name="weekly_offs" value={day} className="sr-only peer" />
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full border border-gray-200 bg-gray-50 text-gray-600 cursor-pointer transition-all peer-checked:bg-gray-800 peer-checked:text-white peer-checked:border-gray-800">
+                      {day}
+                    </span>
+                  </label>
+                ))}
               </div>
             </div>
 

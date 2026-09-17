@@ -4,10 +4,10 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { Profile, AppNotification } from '@/lib/types'
+import type { Profile } from '@/lib/types'
 import { cn, getInitials } from '@/lib/utils'
 import { CHANGELOG } from '@/lib/changelog'
-import NotificationBell, { type UpcomingReminder } from './NotificationBell'
+import NotificationBell from './NotificationBell'
 import {
   LayoutDashboard, Plus, LogOut, ClipboardList,
   BookOpen, Sparkles, ChevronDown,
@@ -18,9 +18,6 @@ interface SidebarClient { id: string; name: string; status: string }
 interface SidebarProps {
   user: Profile
   clients: SidebarClient[]
-  notifications: AppNotification[]
-  unreadCount: number
-  upcoming: UpcomingReminder[]
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -35,7 +32,7 @@ const recentCount = CHANGELOG.filter((e) => {
   return (Date.now() - d.getTime()) < 7 * 24 * 60 * 60 * 1000
 }).length
 
-export default function Sidebar({ user, clients, notifications, unreadCount, upcoming }: SidebarProps) {
+export default function Sidebar({ user, clients }: SidebarProps) {
   const pathname = usePathname()
   const router   = useRouter()
   const supabase = createClient()
@@ -192,7 +189,7 @@ export default function Sidebar({ user, clients, notifications, unreadCount, upc
       {/* Sticky tools — Planner + Notifications, top of the bottom panel, for everyone */}
       <div className={cn('border-t border-slate-800 py-2 flex-shrink-0 space-y-0.5', expanded ? 'px-3' : 'px-2')}>
         <NavLink href="/planner" label="Planner" icon={NotebookPen} />
-        <NotificationBell notifications={notifications} unreadCount={unreadCount} upcoming={upcoming} expanded={expanded} />
+        <NotificationBell expanded={expanded} />
       </div>
 
       {/* Admin links */}

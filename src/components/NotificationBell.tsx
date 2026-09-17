@@ -1,48 +1,77 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { createPortal } from 'react-dom'
+import { useRouter, usePathname } from 'next/navigation'
 import { Bell, AtSign, CalendarClock, Check } from 'lucide-react'
-import { markNotificationReadAction, markAllNotificationsReadAction } from '@/app/(app)/notifications-actions'
+import {
+  markNotificationReadAction, markAllNotificationsReadAction, getNotificationsDataAction,
+} from '@/app/(app)/notifications-actions'
 import { formatDateTime, formatDate } from '@/lib/utils'
-import type { AppNotification } from '@/lib/types'
-
-export interface UpcomingReminder {
-  id: string
-  label: string
-  clientName: string | null
-  deadline: string
-  linkPath: string
-  overdue: boolean
-}
+import type { AppNotification, UpcomingReminder } from '@/lib/types'
 
 interface Props {
-  notifications: AppNotification[]
-  unreadCount: number
-  upcoming: UpcomingReminder[]
   expanded: boolean
 }
 
-export default function NotificationBell({ notifications, unreadCount, upcoming, expanded }: Props) {
+const POLL_MS = 60_000
+
+export default function NotificationBell({ expanded }: Props) {
+  const [notifications, setNotifications] = useState<AppNotification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [upcoming, setUpcoming] = useState<UpcomingReminder[]>([])
   const [open, setOpen] = useState(false)
+  const [panelPos, setPanelPos] = useState<{ top: number; left: number } | null>(null)
   const [isPending, start] = useTransition()
-  const ref = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+  const pathname = usePathname()
+
+  async function load() {
+    const data = await getNotificationsDataAction()
+    setNotifications(data.notifications)
+    setUnreadCount(data.unreadCount)
+    setUpcoming(data.upcoming)
+  }
+
+  useEffect(() => {
+    load()
+    const interval = setInterval(load, POLL_MS)
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Refresh whenever the route changes — cheap, catches anything created elsewhere.
+  useEffect(() => { load() }, [pathname])
 
   useEffect(() => {
     function close(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (
+        btnRef.current && !btnRef.current.contains(e.target as Node) &&
+        panelRef.current && !panelRef.current.contains(e.target as Node)
+      ) setOpen(false)
     }
     document.addEventListener('mousedown', close)
     return () => document.removeEventListener('mousedown', close)
   }, [])
 
+  function toggleOpen() {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      setPanelPos({ top: Math.min(rect.bottom, window.innerHeight - 420), left: rect.right + 8 })
+    }
+    setOpen((v) => !v)
+  }
+
   function openNotification(n: AppNotification) {
     setOpen(false)
-    start(async () => {
-      if (!n.is_read) await markNotificationReadAction(n.id)
-      router.push(n.link_path)
-    })
+    if (!n.is_read) {
+      setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)))
+      setUnreadCount((c) => Math.max(0, c - 1))
+      start(async () => { await markNotificationReadAction(n.id) })
+    }
+    router.push(n.link_path)
   }
 
   function openReminder(r: UpcomingReminder) {
@@ -50,12 +79,19 @@ export default function NotificationBell({ notifications, unreadCount, upcoming,
     router.push(r.linkPath)
   }
 
+  function markAllRead() {
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
+    setUnreadCount(0)
+    start(async () => { await markAllNotificationsReadAction() })
+  }
+
   const totalBadge = unreadCount + upcoming.filter((u) => u.overdue).length
 
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
-        onClick={() => setOpen((v) => !v)}
+        ref={btnRef}
+        onClick={toggleOpen}
         title="Notifications"
         className={`relative flex items-center gap-3 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors ${
           expanded ? 'px-3 py-2 w-full' : 'px-2 py-2 justify-center w-full'
@@ -73,13 +109,17 @@ export default function NotificationBell({ notifications, unreadCount, upcoming,
         )}
       </button>
 
-      {open && (
-        <div className="absolute left-full bottom-0 ml-2 z-50 w-80 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
+      {open && panelPos && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={panelRef}
+          style={{ position: 'fixed', top: panelPos.top, left: panelPos.left }}
+          className="z-[100] w-80 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden"
+        >
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <h3 className="text-sm font-semibold text-gray-800">Notifications</h3>
             {unreadCount > 0 && (
               <button
-                onClick={() => start(async () => { await markAllNotificationsReadAction() })}
+                onClick={markAllRead}
                 disabled={isPending}
                 className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
               >
@@ -140,8 +180,9 @@ export default function NotificationBell({ notifications, unreadCount, upcoming,
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
-    </div>
+    </>
   )
 }
