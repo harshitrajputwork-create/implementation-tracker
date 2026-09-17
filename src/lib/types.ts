@@ -42,6 +42,8 @@ export interface Client {
   country: string | null
   modules: string[] | null
   account_url: string | null
+  weekly_offs: string | null
+  tz_offset: string | null
   owner?: Profile | null
   plan_steps?: PlanStep[]
 }
@@ -135,4 +137,52 @@ export interface ActivityEntry {
   action: string
   detail: string | null
   created_at: string
+}
+
+export type NotificationType = 'mention'
+
+export interface AppNotification {
+  id: string
+  recipient_id: string
+  actor_id: string | null
+  actor_name: string | null
+  type: NotificationType
+  client_id: string | null
+  client_name: string | null
+  context: string | null
+  preview: string | null
+  link_path: string
+  is_read: boolean
+  created_at: string
+}
+
+export interface ClientNoteEntry {
+  id: string
+  client_id: string
+  author_id: string
+  author_name: string | null
+  content: string
+  is_personal: boolean
+  deadline: string | null
+  deadline_done: boolean
+  mentioned_ids: string[]
+  created_at: string
+}
+
+export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Urgent'
+export type TaskStatus = 'open' | 'done'
+
+export interface PlannerTask {
+  id: string
+  user_id: string
+  team: string | null
+  person: string | null
+  client_id: string | null
+  task: string
+  priority: TaskPriority
+  deadline: string | null
+  status: TaskStatus
+  sort_order: number
+  created_at: string
+  client_name?: string | null
 }

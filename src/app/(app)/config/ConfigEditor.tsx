@@ -8,7 +8,7 @@ import {
   addTemplateStepAction,
 } from './actions'
 
-interface TemplateStep {
+export interface TemplateStep {
   id: string
   step_order: number
   step_name: string

@@ -11,9 +11,10 @@ import ClientMetaEditor, { TicketSizeBadge } from './ClientMetaEditor'
 import ClientSpocs from './ClientSpocs'
 import ClientNotes from './ClientNotes'
 import ClientLifecycle from './ClientLifecycle'
+import ScrollToHashHighlight from '@/components/ScrollToHashHighlight'
 import { formatDate, effectiveStatus } from '@/lib/utils'
-import { ChevronLeft, FileText, Send, MapPin, Package, ExternalLink } from 'lucide-react'
-import type { Client, PlanStep, DeviationLogEntry, RolloutConfirmation, Profile, UseCase, ClientUseCase, ActivityEntry, ConfigOption, ClientSpoc } from '@/lib/types'
+import { ChevronLeft, FileText, Send, MapPin, Package, ExternalLink, Clock, CalendarOff } from 'lucide-react'
+import type { Client, PlanStep, DeviationLogEntry, RolloutConfirmation, Profile, UseCase, ClientUseCase, ActivityEntry, ConfigOption, ClientSpoc, ClientNoteEntry } from '@/lib/types'
 import {
   IS_DEV_BYPASS, MOCK_PROFILE, getMockClient, getMockSteps,
   MOCK_DEVIATION_LOG, MOCK_ROLLOUT,
@@ -43,6 +44,8 @@ export default async function ClientDetailPage({
   let configOptions: ConfigOption[] = []
   let clientSpocs: ClientSpoc[] = []
   let personalNote = ''
+  let clientNotes: ClientNoteEntry[] = []
+  let currentUserId: string | null = null
 
   if (IS_DEV_BYPASS) {
     const mc = getMockClient(id)
@@ -52,6 +55,7 @@ export default async function ClientDetailPage({
     typedLog    = MOCK_DEVIATION_LOG.filter((e) => e.client_id === id)
     typedRollout = id === 'demo-client-1' ? MOCK_ROLLOUT : null
     canEdit = true
+    currentUserId = MOCK_PROFILE.id
   } else {
     const { supabase, user } = await getSessionUser()
     if (!user) redirect('/login')
@@ -79,6 +83,7 @@ export default async function ClientDetailPage({
       { data: opts },
       { data: spocs },
       { data: pNote },
+      { data: notesRows },
     ] = await Promise.all([
       supabase.from('plan_steps').select('*').eq('client_id', id).order('step_order'),
       supabase.from('deviation_log').select('*, author:profiles!author_id(id, full_name, email)').eq('client_id', id).order('created_at', { ascending: false }),
@@ -90,6 +95,7 @@ export default async function ClientDetailPage({
       supabase.from('config_options').select('*').order('sort_order'),
       supabase.from('client_spocs').select('*').eq('client_id', id).order('sort_order'),
       supabase.from('personal_notes').select('content').eq('client_id', id).eq('user_id', user.id).maybeSingle(),
+      supabase.from('client_notes').select('*').eq('client_id', id).order('created_at', { ascending: false }),
     ])
 
     useCases = (uc ?? []) as UseCase[]
@@ -104,6 +110,8 @@ export default async function ClientDetailPage({
     typedRollout = rollout as RolloutConfirmation | null
     clientSpocs  = (spocs ?? []) as ClientSpoc[]
     personalNote = pNote?.content ?? ''
+    clientNotes  = (notesRows ?? []) as ClientNoteEntry[]
+    currentUserId = user.id
     canEdit =
       profile?.role === 'admin' ||
       (profile?.role === 'member' && client.owner_id === user.id)
@@ -120,6 +128,7 @@ export default async function ClientDetailPage({
 
   return (
     <div className="p-8 w-full">
+      <ScrollToHashHighlight />
       {/* Back link */}
       <Link
         href="/dashboard"
@@ -165,6 +174,12 @@ export default async function ClientDetailPage({
             {typedClient.company_size && <><span className="text-gray-300">·</span><span>{typedClient.company_size}</span></>}
             {typedClient.kickoff_date && <><span className="text-gray-300">·</span><span>Kickoff {formatDate(typedClient.kickoff_date)}</span></>}
             {typedClient.country && <><span className="text-gray-300">·</span><span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{typedClient.country}</span></>}
+            {typedClient.tz_offset && (
+              <><span className="text-gray-300">·</span><span className="flex items-center gap-1 text-indigo-600"><Clock className="w-3.5 h-3.5" />{typedClient.tz_offset}</span></>
+            )}
+            {typedClient.weekly_offs && (
+              <><span className="text-gray-300">·</span><span className="flex items-center gap-1 text-gray-500"><CalendarOff className="w-3.5 h-3.5" />{typedClient.weekly_offs}</span></>
+            )}
             {typedClient.modules && typedClient.modules.length > 0 && (
               <>
                 <span className="text-gray-300">·</span>
@@ -259,6 +274,7 @@ export default async function ClientDetailPage({
               entries={typedLog}
               clientId={id}
               canEdit={canEdit}
+              members={members}
             />
             <ActivityLog entries={activityLog} />
           </div>
@@ -283,8 +299,12 @@ export default async function ClientDetailPage({
             />
             <ClientNotes
               clientId={id}
-              teamNotes={typedClient.notes ?? ''}
-              personalNote={personalNote}
+              currentUserId={currentUserId}
+              teamEntries={clientNotes.filter((n) => !n.is_personal)}
+              personalEntries={clientNotes.filter((n) => n.is_personal)}
+              legacyTeamNote={typedClient.notes ?? ''}
+              legacyPersonalNote={personalNote}
+              members={members}
               canEdit={canEdit}
             />
           </div>

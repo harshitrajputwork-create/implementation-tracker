@@ -37,6 +37,8 @@ async function createClientAction(formData: FormData) {
   const country = formData.get('country') as string
   const modules = formData.getAll('modules') as string[]
   const account_url = formData.get('account_url') as string
+  const weekly_offs = formData.get('weekly_offs') as string
+  const tz_offset = formData.get('tz_offset') as string
 
   if (IS_DEV_BYPASS) {
     // In dev mode, simulate redirect to a mock client
@@ -63,6 +65,8 @@ async function createClientAction(formData: FormData) {
         country: country || null,
         modules: modules.length > 0 ? modules : null,
         account_url: account_url || null,
+        weekly_offs: weekly_offs || null,
+        tz_offset: tz_offset || null,
         created_by: user.id,
       })
       .select('id')
@@ -226,6 +230,20 @@ export default async function NewClientPage() {
                   <option value="">— none —</option>
                   {countryOptions.map((o) => <option key={o.id} value={o.label}>{o.label}</option>)}
                 </select>
+              </div>
+            </div>
+
+            {/* Timezone + Weekly offs */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Timezone vs IST</label>
+                <input name="tz_offset" placeholder="e.g. 2h 30m ahead of IST"
+                  className={`${inputCls} placeholder-gray-400`} />
+              </div>
+              <div>
+                <label className={labelCls}>Weekly offs</label>
+                <input name="weekly_offs" placeholder="e.g. Closed Sat & Sun"
+                  className={`${inputCls} placeholder-gray-400`} />
               </div>
             </div>
 

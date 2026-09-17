@@ -4,17 +4,24 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { Profile } from '@/lib/types'
+import type { Profile, AppNotification } from '@/lib/types'
 import { cn, getInitials } from '@/lib/utils'
 import { CHANGELOG } from '@/lib/changelog'
+import NotificationBell, { type UpcomingReminder } from './NotificationBell'
 import {
   LayoutDashboard, Plus, LogOut, ClipboardList,
-  Users, BookOpen, Sparkles, ChevronDown, ChevronUp,
-  PanelLeftClose, PanelLeftOpen, Settings, ChevronRight,
+  BookOpen, Sparkles, ChevronDown,
+  PanelLeftClose, PanelLeftOpen, Settings, ChevronRight, NotebookPen,
 } from 'lucide-react'
 
 interface SidebarClient { id: string; name: string; status: string }
-interface SidebarProps { user: Profile; clients: SidebarClient[] }
+interface SidebarProps {
+  user: Profile
+  clients: SidebarClient[]
+  notifications: AppNotification[]
+  unreadCount: number
+  upcoming: UpcomingReminder[]
+}
 
 const STATUS_DOT: Record<string, string> = {
   on_track:  'bg-green-400',
@@ -28,15 +35,14 @@ const recentCount = CHANGELOG.filter((e) => {
   return (Date.now() - d.getTime()) < 7 * 24 * 60 * 60 * 1000
 }).length
 
-export default function Sidebar({ user, clients }: SidebarProps) {
+export default function Sidebar({ user, clients, notifications, unreadCount, upcoming }: SidebarProps) {
   const pathname = usePathname()
   const router   = useRouter()
   const supabase = createClient()
 
-  const [pinned, setPinned]             = useState(false)
-  const [hovered, setHovered]           = useState(false)
-  const [whatsNewOpen, setWhatsNewOpen] = useState(false)
-  const [clientsOpen, setClientsOpen]   = useState(true)
+  const [pinned, setPinned]           = useState(false)
+  const [hovered, setHovered]         = useState(false)
+  const [clientsOpen, setClientsOpen] = useState(true)
 
   useEffect(() => {
     setPinned(localStorage.getItem('sidebar_pinned') === 'true')
@@ -183,13 +189,18 @@ export default function Sidebar({ user, clients }: SidebarProps) {
         )}
       </nav>
 
-      {/* Admin links — above What's New */}
+      {/* Sticky tools — Planner + Notifications, top of the bottom panel, for everyone */}
+      <div className={cn('border-t border-slate-800 py-2 flex-shrink-0 space-y-0.5', expanded ? 'px-3' : 'px-2')}>
+        <NavLink href="/planner" label="Planner" icon={NotebookPen} />
+        <NotificationBell notifications={notifications} unreadCount={unreadCount} upcoming={upcoming} expanded={expanded} />
+      </div>
+
+      {/* Admin links */}
       {isAdmin && (
         <div className={cn('border-t border-slate-800 py-2 flex-shrink-0 space-y-0.5', expanded ? 'px-3' : 'px-2')}>
           {[
-            { href: '/team',    label: 'Team',          icon: Users    },
-            { href: '/library', label: 'Use Cases',     icon: BookOpen },
-            { href: '/config',  label: 'Configuration', icon: Settings },
+            { href: '/library',  label: 'Use Cases', icon: BookOpen },
+            { href: '/settings', label: 'Settings',  icon: Settings },
           ].map(({ href, label, icon: Icon }) => {
             const isActive = pathname.startsWith(href)
             return (
@@ -210,56 +221,6 @@ export default function Sidebar({ user, clients }: SidebarProps) {
           })}
         </div>
       )}
-
-      {/* What's New */}
-      <div className={cn('border-t border-slate-800 pt-2 flex-shrink-0', expanded ? 'px-3 pb-2' : 'px-2 pb-2')}>
-        {expanded ? (
-          <>
-            <button
-              onClick={() => setWhatsNewOpen((v) => !v)}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors text-sm"
-            >
-              <Sparkles className="w-4 h-4 flex-shrink-0" />
-              <span className="flex-1 text-left font-medium whitespace-nowrap">What&apos;s New</span>
-              {recentCount > 0 && (
-                <span className="text-xs bg-blue-600 text-white rounded-full px-1.5 py-0.5 font-semibold leading-none">
-                  {recentCount}
-                </span>
-              )}
-              {whatsNewOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
-            {whatsNewOpen && (
-              <div className="mt-1 px-3 pb-2 space-y-2">
-                {CHANGELOG.slice(0, 2).map((entry) => (
-                  <div key={entry.version}>
-                    <p className="text-xs font-semibold text-slate-300 mb-1">
-                      {entry.version} · {new Date(entry.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                    </p>
-                    <ul className="space-y-0.5">
-                      {entry.changes.slice(0, 3).map((c, i) => (
-                        <li key={i} className="text-xs text-slate-500 leading-snug">· {c}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-                <Link href="/changelog" className="block text-xs text-blue-400 hover:text-blue-300 mt-1">
-                  See full changelog →
-                </Link>
-              </div>
-            )}
-          </>
-        ) : (
-          <button
-            title="What's New"
-            className="relative flex items-center justify-center w-full py-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
-          >
-            <Sparkles className="w-4 h-4" />
-            {recentCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-blue-600 rounded-full" />
-            )}
-          </button>
-        )}
-      </div>
 
       {/* Pin toggle */}
       <div className={cn('border-t border-slate-800 pt-1 pb-1 flex-shrink-0', expanded ? 'px-3' : 'px-2')}>
@@ -288,12 +249,22 @@ export default function Sidebar({ user, clients }: SidebarProps) {
               <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                 {getInitials(user.full_name ?? user.email)}
               </div>
-              <div className="min-w-0 overflow-hidden">
+              <div className="min-w-0 overflow-hidden flex-1">
                 <p className="text-white text-sm font-medium truncate">
                   {user.full_name ?? user.email.split('@')[0]}
                 </p>
                 <p className="text-slate-500 text-xs capitalize">{user.role}</p>
               </div>
+              <Link
+                href="/changelog"
+                title="What's new"
+                className="relative p-1.5 text-slate-500 hover:text-amber-300 hover:bg-slate-800 rounded-lg transition-colors flex-shrink-0"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {recentCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-amber-400 rounded-full" />
+                )}
+              </Link>
             </div>
             <button
               onClick={signOut}
@@ -306,11 +277,21 @@ export default function Sidebar({ user, clients }: SidebarProps) {
         ) : (
           <div className="flex flex-col items-center gap-1">
             <div
-              className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold"
+              className="relative w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold"
               title={user.full_name ?? user.email}
             >
               {getInitials(user.full_name ?? user.email)}
             </div>
+            <Link
+              href="/changelog"
+              title="What's new"
+              className="relative flex items-center justify-center py-1 w-full rounded-lg text-slate-500 hover:text-amber-300 hover:bg-slate-800 transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              {recentCount > 0 && (
+                <span className="absolute top-0.5 right-2.5 w-1.5 h-1.5 bg-amber-400 rounded-full" />
+              )}
+            </Link>
             <button
               onClick={signOut}
               title="Sign out"

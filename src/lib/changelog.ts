@@ -6,6 +6,22 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-09-18',
+    version: 'v1.6',
+    changes: [
+      '@mention tagging in Notes and Deviation Log — mentioned teammates get a notification',
+      'Notification bell in sidebar — mentions + upcoming deadline reminders, click to jump straight to it',
+      'Notes now support optional deadlines — log a reminder for yourself or the team, mark it done from the note or the Planner',
+      'New: Planner — a private personal task list (team, person, account, priority, deadline) with sort-by-deadline / sort-by-priority, plus a live feed of every deadline you\'ve set on client notes',
+      'Team and Configuration merged into one Settings page',
+      'Sidebar: What\'s New collapsed into a small icon by your name; Planner and Notifications pinned at the top of the bottom panel',
+      'Admin: delete a client permanently (type-to-confirm) from Edit details',
+      'KAM is now a managed dropdown (Config) and its accounts are visible on a new dashboard tab, grouped by KAM',
+      'Status badges show how overdue a client is (e.g. "4mo 12d overdue"), not just "Blocked"',
+      'New client fields: Timezone vs IST and Weekly offs, shown on the client header for scheduling',
+    ],
+  },
+  {
     date: '2026-09-13',
     version: 'v1.5',
     changes: [

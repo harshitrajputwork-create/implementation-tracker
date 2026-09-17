@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import type { DeviationLogEntry, DeviationCause } from '@/lib/types'
+import type { DeviationLogEntry, DeviationCause, Profile } from '@/lib/types'
 import { formatDateTime, cn } from '@/lib/utils'
 import { addDeviationEntryAction } from './actions'
+import MentionTextarea from '@/components/MentionTextarea'
 import { AlertCircle, Plus } from 'lucide-react'
 
 const CAUSE_OPTIONS: { value: DeviationCause; label: string; color: string }[] = [
@@ -11,6 +12,15 @@ const CAUSE_OPTIONS: { value: DeviationCause; label: string; color: string }[] =
   { value: 'internal',      label: 'Internal',      color: 'bg-red-100 text-red-700'    },
   { value: 'other',         label: 'Other',          color: 'bg-gray-100 text-gray-600'  },
 ]
+
+function highlightMentions(text: string) {
+  const parts = text.split(/(@[A-Za-z][\w' -]*)/g)
+  return parts.map((part, i) =>
+    part.startsWith('@')
+      ? <span key={i} className="text-blue-600 font-medium">{part}</span>
+      : <span key={i}>{part}</span>,
+  )
+}
 
 function CauseTag({ cause }: { cause: DeviationCause | null }) {
   const cfg = CAUSE_OPTIONS.find((c) => c.value === cause)
@@ -26,12 +36,15 @@ export default function DeviationLogSection({
   entries,
   clientId,
   canEdit,
+  members,
 }: {
   entries: DeviationLogEntry[]
   clientId: string
   canEdit: boolean
+  members: Profile[]
 }) {
   const [note, setNote]             = useState('')
+  const [mentionedIds, setMentionedIds] = useState<string[]>([])
   const [cause, setCause]           = useState<DeviationCause>('client_caused')
   const [clientVisible, setClientVisible] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -40,8 +53,9 @@ export default function DeviationLogSection({
   function submit() {
     if (!note.trim()) return
     startTransition(async () => {
-      await addDeviationEntryAction(clientId, note, cause, clientVisible)
+      await addDeviationEntryAction(clientId, note, cause, clientVisible, mentionedIds)
       setNote('')
+      setMentionedIds([])
       setCause('client_caused')
       setClientVisible(false)
       setShowForm(false)
@@ -49,7 +63,7 @@ export default function DeviationLogSection({
   }
 
   return (
-    <div>
+    <div id="deviation-log">
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-semibold text-gray-900 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-amber-500" />
@@ -101,11 +115,14 @@ export default function DeviationLogSection({
               </div>
             </div>
             <label className="text-xs font-medium text-gray-600 mb-1.5 block">
-              Log a delay, blocker, or deviation
+              Log a delay, blocker, or deviation — type @ to tag someone
             </label>
-            <textarea
+            <MentionTextarea
               value={note}
-              onChange={(e) => setNote(e.target.value)}
+              onChange={setNote}
+              members={members}
+              mentionedIds={mentionedIds}
+              onMentionedIdsChange={setMentionedIds}
               rows={3}
               autoFocus
               placeholder="e.g. Client SPOC unavailable for D11 sign-off. Rescheduled to 15 Sep. Reason: internal audit week."
@@ -145,7 +162,7 @@ export default function DeviationLogSection({
         ) : (
           <div className="divide-y divide-gray-100">
             {entries.map((entry) => (
-              <div key={entry.id} className="px-5 py-4">
+              <div key={entry.id} id={`dev-${entry.id}`} className="px-5 py-4">
                 <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                   <span className="text-xs font-medium text-gray-500">
                     {formatDateTime(entry.created_at)}
@@ -163,7 +180,7 @@ export default function DeviationLogSection({
                     <span className="text-xs text-blue-500 font-medium">· client-visible</span>
                   )}
                 </div>
-                <p className="text-sm text-gray-700 leading-relaxed">{entry.note}</p>
+                <p className="text-sm text-gray-700 leading-relaxed">{highlightMentions(entry.note)}</p>
               </div>
             ))}
           </div>

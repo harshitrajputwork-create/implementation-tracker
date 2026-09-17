@@ -51,6 +51,8 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
   const [country,    setCountry]    = useState(client.country ?? '')
   const [modules,    setModules]    = useState<string[]>(client.modules ?? [])
   const [accountUrl, setAccountUrl] = useState(client.account_url ?? '')
+  const [weeklyOffs, setWeeklyOffs] = useState(client.weekly_offs ?? '')
+  const [tzOffset,   setTzOffset]   = useState(client.tz_offset ?? '')
 
   const spocOptions    = configOptions.filter((o) => o.config_key === 'sales_spoc')
   const countryOptions = configOptions.filter((o) => o.config_key === 'country')
@@ -76,6 +78,8 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
         country: country || null,
         modules,
         account_url: accountUrl.trim() || null,
+        weekly_offs: weeklyOffs.trim() || null,
+        tz_offset: tzOffset.trim() || null,
       })
       setOpen(false)
     })
@@ -167,6 +171,26 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
                     <option value="">— none —</option>
                     {countryOptions.map((o) => <option key={o.id} value={o.label}>{o.label}</option>)}
                   </select>
+                </Field>
+              </div>
+
+              {/* Timezone + Weekly offs row */}
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Timezone vs IST">
+                  <input
+                    value={tzOffset}
+                    onChange={(e) => setTzOffset(e.target.value)}
+                    placeholder="e.g. 2h 30m ahead of IST"
+                    className={`${inputCls} placeholder-gray-400`}
+                  />
+                </Field>
+                <Field label="Weekly offs">
+                  <input
+                    value={weeklyOffs}
+                    onChange={(e) => setWeeklyOffs(e.target.value)}
+                    placeholder="e.g. Closed Sat & Sun"
+                    className={`${inputCls} placeholder-gray-400`}
+                  />
                 </Field>
               </div>
 

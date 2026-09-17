@@ -20,6 +20,16 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+@keyframes breathe-highlight {
+  0%, 100% { background-color: transparent; box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+  50%      { background-color: rgba(37, 99, 235, 0.08); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25); }
+}
+
+.breathe-highlight {
+  animation: breathe-highlight 1.1s ease-in-out 2;
+  border-radius: 0.75rem;
+}
+
 @media print {
   .no-print {
     display: none !important;

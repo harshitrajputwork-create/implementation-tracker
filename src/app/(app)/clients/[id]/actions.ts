@@ -3,6 +3,7 @@
 import { createClient, getSessionUser } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { notifyMentions } from '@/lib/notify'
 import type { ClientStatus, StepStatus, DeviationCause } from '@/lib/types'
 
 type SB = Awaited<ReturnType<typeof createClient>>
@@ -114,20 +115,40 @@ export async function addDeviationEntryAction(
   note: string,
   cause: DeviationCause,
   clientVisible: boolean = false,
+  mentionedIds: string[] = [],
 ) {
   const { supabase, user } = await getSessionUser()
   if (!user || !note.trim()) return
 
-  await supabase.from('deviation_log').insert({
-    client_id: clientId,
-    author_id: user.id,
-    note: note.trim(),
-    cause,
-    client_visible: clientVisible,
-  })
+  const { data: inserted } = await supabase
+    .from('deviation_log')
+    .insert({
+      client_id: clientId,
+      author_id: user.id,
+      note: note.trim(),
+      cause,
+      client_visible: clientVisible,
+    })
+    .select('id')
+    .single()
 
   await logAction(supabase, clientId, user.id, 'added deviation note')
   await touchActivity(supabase, clientId)
+
+  if (mentionedIds.length > 0) {
+    const [{ data: p }, { data: client }] = await Promise.all([
+      supabase.from('profiles').select('full_name, email').eq('id', user.id).single(),
+      supabase.from('clients').select('name').eq('id', clientId).single(),
+    ])
+    await notifyMentions(supabase, mentionedIds, user.id, p?.full_name ?? p?.email ?? 'Someone', {
+      clientId,
+      clientName: client?.name ?? 'a client',
+      context: 'Deviation log',
+      preview: note.trim(),
+      linkPath: `/clients/${clientId}#${inserted ? `dev-${inserted.id}` : 'deviation-log'}`,
+    })
+  }
+
   revalidatePath(`/clients/${clientId}`)
 }
 
@@ -194,6 +215,8 @@ export async function updateClientMetaAction(
     country?: string | null
     modules?: string[]
     account_url?: string | null
+    weekly_offs?: string | null
+    tz_offset?: string | null
   },
 ) {
   const { supabase, user } = await getSessionUser()
@@ -284,4 +307,66 @@ export async function upsertPersonalNoteAction(clientId: string, content: string
     { client_id: clientId, user_id: user.id, content, updated_at: new Date().toISOString() },
     { onConflict: 'client_id,user_id' },
   )
+}
+
+// ── Structured client notes (mentions + deadlines) ─────────────────────────────
+
+export async function addClientNoteAction(
+  clientId: string,
+  content: string,
+  isPersonal: boolean,
+  deadline: string | null,
+  mentionedIds: string[] = [],
+) {
+  const { supabase, user } = await getSessionUser()
+  if (!user || !content.trim()) return
+
+  const [{ data: p }, { data: client }] = await Promise.all([
+    supabase.from('profiles').select('full_name, email').eq('id', user.id).single(),
+    supabase.from('clients').select('name').eq('id', clientId).single(),
+  ])
+  const authorName = p?.full_name ?? p?.email ?? 'Someone'
+
+  const { data: inserted } = await supabase
+    .from('client_notes')
+    .insert({
+      client_id: clientId,
+      author_id: user.id,
+      author_name: authorName,
+      content: content.trim(),
+      is_personal: isPersonal,
+      deadline: deadline || null,
+      mentioned_ids: mentionedIds,
+    })
+    .select('id')
+    .single()
+
+  await touchActivity(supabase, clientId)
+
+  // Mentions only make sense on notes others can actually see.
+  if (!isPersonal && mentionedIds.length > 0) {
+    await notifyMentions(supabase, mentionedIds, user.id, authorName, {
+      clientId,
+      clientName: client?.name ?? 'a client',
+      context: 'Team note',
+      preview: content.trim(),
+      linkPath: `/clients/${clientId}#${inserted ? `note-${inserted.id}` : 'notes'}`,
+    })
+  }
+
+  revalidatePath(`/clients/${clientId}`)
+}
+
+export async function deleteClientNoteAction(noteId: string, clientId: string) {
+  const { supabase, user } = await getSessionUser()
+  if (!user) return
+  await supabase.from('client_notes').delete().eq('id', noteId).eq('author_id', user.id)
+  revalidatePath(`/clients/${clientId}`)
+}
+
+export async function toggleNoteDeadlineDoneAction(noteId: string, clientId: string, done: boolean) {
+  const { supabase, user } = await getSessionUser()
+  if (!user) return
+  await supabase.from('client_notes').update({ deadline_done: done }).eq('id', noteId).eq('author_id', user.id)
+  revalidatePath(`/clients/${clientId}`)
 }
