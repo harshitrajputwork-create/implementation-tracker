@@ -10,6 +10,7 @@ export default async function PlannerPage() {
   let tasks: PlannerTask[] = []
   let clients: { id: string; name: string }[] = []
   let noteDeadlines: { id: string; clientId: string; clientName: string; content: string; deadline: string; deadline_done: boolean }[] = []
+  let latestUpdates: { id: string; clientId: string; clientName: string; content: string; authorName: string; createdAt: string }[] = []
   let teamSuggestions: string[] = []
   let personSuggestions: string[] = []
 
@@ -19,7 +20,7 @@ export default async function PlannerPage() {
     const { supabase, user } = await getSessionUser()
     if (!user) redirect('/login')
 
-    const [{ data: t }, { data: c }, { data: notes }] = await Promise.all([
+    const [{ data: t }, { data: c }, { data: notes }, { data: recent }] = await Promise.all([
       supabase.from('planner_tasks').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('clients').select('id, name').order('name'),
       supabase
@@ -28,6 +29,13 @@ export default async function PlannerPage() {
         .eq('author_id', user.id)
         .not('deadline', 'is', null)
         .order('deadline'),
+      // Latest note per client (any author I can see — RLS already hides other
+      // people's personal notes). Ordered desc + deduped client-side below.
+      supabase
+        .from('client_notes')
+        .select('id, client_id, content, author_name, created_at, clients(name)')
+        .order('created_at', { ascending: false })
+        .limit(200),
     ])
 
     tasks = (t ?? []) as PlannerTask[]
@@ -41,6 +49,21 @@ export default async function PlannerPage() {
       deadline: n.deadline,
       deadline_done: n.deadline_done,
     }))
+
+    const seenClients = new Set<string>()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const n of (recent ?? []) as any[]) {
+      if (seenClients.has(n.client_id)) continue
+      seenClients.add(n.client_id)
+      latestUpdates.push({
+        id: n.id,
+        clientId: n.client_id,
+        clientName: n.clients?.name ?? 'Client',
+        content: n.content,
+        authorName: n.author_name ?? 'Someone',
+        createdAt: n.created_at,
+      })
+    }
 
     teamSuggestions = [...new Set(tasks.map((t) => t.team).filter((v): v is string => !!v))]
     personSuggestions = [...new Set(tasks.map((t) => t.person).filter((v): v is string => !!v))]
@@ -71,6 +94,7 @@ export default async function PlannerPage() {
         initialTasks={tasks}
         clients={clients}
         noteDeadlines={noteDeadlines}
+        latestUpdates={latestUpdates}
         teamSuggestions={teamSuggestions}
         personSuggestions={personSuggestions}
         accountSuggestions={accountSuggestions}

@@ -2,10 +2,10 @@
 
 import { useState, useTransition, useMemo } from 'react'
 import Link from 'next/link'
-import { Plus, Trash2, Check, ArrowUpDown, Flag, CalendarClock, X, Pencil, ExternalLink } from 'lucide-react'
+import { Plus, Trash2, Check, ArrowUpDown, Flag, CalendarClock, X, Pencil, ExternalLink, MessageSquareText } from 'lucide-react'
 import { addPlannerTaskAction, updatePlannerTaskAction, togglePlannerTaskAction, deletePlannerTaskAction } from './actions'
 import { toggleNoteDeadlineDoneAction } from '../clients/[id]/actions'
-import { formatDate } from '@/lib/utils'
+import { formatDate, daysSince } from '@/lib/utils'
 import { resolveAccount, type ClientOption } from '@/lib/planner-utils'
 import type { PlannerTask, TaskPriority } from '@/lib/types'
 
@@ -27,10 +27,20 @@ interface NoteDeadline {
   deadline_done: boolean
 }
 
+interface LatestUpdate {
+  id: string
+  clientId: string
+  clientName: string
+  content: string
+  authorName: string
+  createdAt: string
+}
+
 interface Props {
   initialTasks: PlannerTask[]
   clients: ClientOption[]
   noteDeadlines: NoteDeadline[]
+  latestUpdates: LatestUpdate[]
   teamSuggestions: string[]
   personSuggestions: string[]
   accountSuggestions: string[]
@@ -38,8 +48,17 @@ interface Props {
 
 const inputCls = 'text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white'
 
+function relativeDay(dateStr: string): string {
+  const d = daysSince(dateStr)
+  if (d === null) return ''
+  if (d <= 0) return 'Today'
+  if (d === 1) return 'Yesterday'
+  if (d < 30) return `${d}d ago`
+  return formatDate(dateStr)
+}
+
 export default function PlannerClient({
-  initialTasks, clients, noteDeadlines: initialNoteDeadlines, teamSuggestions, personSuggestions, accountSuggestions,
+  initialTasks, clients, noteDeadlines: initialNoteDeadlines, latestUpdates, teamSuggestions, personSuggestions, accountSuggestions,
 }: Props) {
   const [tasks, setTasks] = useState(initialTasks)
   const [noteDeadlines, setNoteDeadlines] = useState(initialNoteDeadlines)
@@ -221,6 +240,32 @@ export default function PlannerClient({
           </div>
         )}
       </div>
+
+      {/* Where things stand — latest note per client, no deadline required */}
+      {latestUpdates.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+              <MessageSquareText className="w-3.5 h-3.5 text-gray-400" />
+              Where things stand
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5">The last note logged on each account — so you don&apos;t have to remember.</p>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {latestUpdates.map((u) => (
+              <div key={u.id} className="px-4 py-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Link href={`/clients/${u.clientId}#note-${u.id}`} className="text-sm font-semibold text-blue-600 hover:text-blue-700">
+                    {u.clientName}
+                  </Link>
+                  <span className="text-xs text-gray-400">{relativeDay(u.createdAt)} · {u.authorName}</span>
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed">{u.content}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* From client notes */}
       {noteDeadlines.length > 0 && (
