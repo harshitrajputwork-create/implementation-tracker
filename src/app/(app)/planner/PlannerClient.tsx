@@ -134,7 +134,7 @@ export default function PlannerClient({
   const openCount = tasks.filter((t) => t.status !== 'done').length
 
   return (
-    <div className="space-y-6">
+    <div>
       <datalist id="planner-team-options">
         {teamSuggestions.map((t) => <option key={t} value={t} />)}
       </datalist>
@@ -145,6 +145,8 @@ export default function PlannerClient({
         {accountSuggestions.map((a) => <option key={a} value={a} />)}
       </datalist>
 
+    <div className="flex flex-col lg:flex-row gap-6 items-start">
+    <div className="flex-1 min-w-0 w-full space-y-6">
       {/* Quick add */}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Add a task</p>
@@ -240,7 +242,9 @@ export default function PlannerClient({
           </div>
         )}
       </div>
+    </div>
 
+    <div className="w-full lg:w-96 flex-shrink-0 space-y-6">
       {/* Where things stand — latest note per client, no deadline required */}
       {latestUpdates.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -301,6 +305,8 @@ export default function PlannerClient({
           </div>
         </div>
       )}
+    </div>
+    </div>
     </div>
   )
 }
