@@ -355,6 +355,7 @@ export async function addClientNoteAction(
   }
 
   revalidatePath(`/clients/${clientId}`)
+  revalidatePath('/planner')
 }
 
 export async function deleteClientNoteAction(noteId: string, clientId: string) {
@@ -362,6 +363,7 @@ export async function deleteClientNoteAction(noteId: string, clientId: string) {
   if (!user) return
   await supabase.from('client_notes').delete().eq('id', noteId).eq('author_id', user.id)
   revalidatePath(`/clients/${clientId}`)
+  revalidatePath('/planner')
 }
 
 export async function toggleNoteDeadlineDoneAction(noteId: string, clientId: string, done: boolean) {
@@ -369,4 +371,5 @@ export async function toggleNoteDeadlineDoneAction(noteId: string, clientId: str
   if (!user) return
   await supabase.from('client_notes').update({ deadline_done: done }).eq('id', noteId).eq('author_id', user.id)
   revalidatePath(`/clients/${clientId}`)
+  revalidatePath('/planner')
 }
