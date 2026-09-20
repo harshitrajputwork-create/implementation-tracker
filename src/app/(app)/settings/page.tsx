@@ -15,6 +15,7 @@ export default async function SettingsPage({
   const { tab } = await searchParams
   const initialTab = tab === 'config' ? 'config' : 'team'
 
+  let currentUserId: string | null = null
   let members: Profile[] = []
   let invitations: Invitation[] = []
   let configOptions: ConfigOption[] = []
@@ -25,6 +26,7 @@ export default async function SettingsPage({
   } else {
     const { supabase, user } = await getSessionUser()
     if (!user) redirect('/login')
+    currentUserId = user.id
 
     const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single()
     const myRole = (me?.role as Role) ?? 'visitor'
@@ -76,6 +78,7 @@ export default async function SettingsPage({
         initialTab={initialTab}
         members={members}
         invitations={invitations}
+        currentUserId={currentUserId}
         steps={steps}
         configOptions={configOptions}
         optionsMigrationMissing={configOptions.length === 0}

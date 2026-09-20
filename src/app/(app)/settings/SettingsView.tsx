@@ -13,6 +13,7 @@ interface Props {
   initialTab: Tab
   members: Profile[]
   invitations: Invitation[]
+  currentUserId: string | null
   steps: TemplateStep[]
   configOptions: ConfigOption[]
   optionsMigrationMissing: boolean
@@ -20,7 +21,7 @@ interface Props {
 }
 
 export default function SettingsView({
-  initialTab, members, invitations, steps, configOptions, optionsMigrationMissing, stepsMigrationMissing,
+  initialTab, members, invitations, currentUserId, steps, configOptions, optionsMigrationMissing, stepsMigrationMissing,
 }: Props) {
   const [tab, setTab] = useState<Tab>(initialTab)
 
@@ -46,7 +47,7 @@ export default function SettingsView({
       </div>
 
       {tab === 'team' ? (
-        <TeamClient members={members} invitations={invitations} />
+        <TeamClient members={members} invitations={invitations} currentUserId={currentUserId} />
       ) : (
         <div>
           <div className="mb-10">

@@ -3,8 +3,8 @@
 import { useState, useTransition } from 'react'
 import type { Profile, Invitation, Role } from '@/lib/types'
 import { cn, getInitials } from '@/lib/utils'
-import { inviteUserAction, updateUserRoleAction, revokeInvitationAction } from './actions'
-import { Mail, Shield, Plus, X, Check } from 'lucide-react'
+import { inviteUserAction, updateUserRoleAction, revokeInvitationAction, removeMemberAction } from './actions'
+import { Mail, Shield, Plus, X, Check, Trash2 } from 'lucide-react'
 
 const ROLES: Role[] = ['admin', 'member', 'visitor']
 
@@ -55,10 +55,15 @@ function RoleSelect({
 export default function TeamClient({
   members,
   invitations,
+  currentUserId,
 }: {
   members: Profile[]
   invitations: Invitation[]
+  currentUserId: string | null
 }) {
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [removeError, setRemoveError] = useState('')
+
   const [email, setEmail]       = useState('')
   const [role, setRole]         = useState<Role>('member')
   const [isPending, startTransition] = useTransition()
@@ -77,6 +82,15 @@ export default function TeamClient({
         setInviteSuccess(`Invite sent to ${email.trim()}`)
         setEmail('')
       }
+    })
+  }
+
+  function removeMember(id: string) {
+    if (confirmId !== id) { setConfirmId(id); setRemoveError(''); return }
+    startTransition(async () => {
+      const res = await removeMemberAction(id)
+      if (res.error) setRemoveError(res.error)
+      setConfirmId(null)
     })
   }
 
@@ -162,6 +176,7 @@ export default function TeamClient({
         <h2 className="font-semibold text-gray-900 mb-3">
           Members <span className="text-gray-400 font-normal text-sm">({members.length})</span>
         </h2>
+        {removeError && <p className="text-sm text-red-600 mb-2">{removeError}</p>}
         <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden">
           {members.map((m) => (
             <div key={m.id} className="flex items-center gap-4 px-5 py-3.5">
@@ -175,6 +190,22 @@ export default function TeamClient({
               <div className="flex items-center gap-3">
                 <Shield className="w-3.5 h-3.5 text-gray-300" />
                 <RoleSelect profileId={m.id} currentRole={m.role} />
+                {m.id !== currentUserId && (
+                  <button
+                    onClick={() => removeMember(m.id)}
+                    disabled={isPending}
+                    title={confirmId === m.id ? 'Click again to confirm removal' : 'Remove member'}
+                    className={cn(
+                      'flex items-center gap-1 text-xs rounded-lg px-2 py-1.5 transition-colors',
+                      confirmId === m.id
+                        ? 'bg-red-600 text-white'
+                        : 'text-gray-400 hover:text-red-600 hover:bg-red-50',
+                    )}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    {confirmId === m.id && 'Confirm'}
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -187,6 +218,7 @@ export default function TeamClient({
         <p><span className={cn('inline font-medium text-xs px-1.5 py-0.5 rounded-full mr-2', ROLE_COLORS.admin)}>Admin</span>Full access · manage team, use case library, all clients</p>
         <p><span className={cn('inline font-medium text-xs px-1.5 py-0.5 rounded-full mr-2', ROLE_COLORS.member)}>Member</span>Create & edit their own clients · view all clients</p>
         <p><span className={cn('inline font-medium text-xs px-1.5 py-0.5 rounded-full mr-2', ROLE_COLORS.visitor)}>Visitor</span>Read-only access to all clients · no editing</p>
+        <p className="text-xs text-gray-400 pt-1">Removing a member revokes their access and deletes their personal notes, planner tasks and notifications. Clients they owned stay, unassigned.</p>
       </div>
     </div>
   )

@@ -12,6 +12,7 @@ import ClientSpocs from './ClientSpocs'
 import ClientNotes from './ClientNotes'
 import ClientLifecycle from './ClientLifecycle'
 import ScrollToHashHighlight from '@/components/ScrollToHashHighlight'
+import RefreshButton from '@/components/RefreshButton'
 import { formatDate, effectiveStatus } from '@/lib/utils'
 import { ChevronLeft, FileText, Send, MapPin, Package, ExternalLink, Clock, CalendarOff } from 'lucide-react'
 import type { Client, PlanStep, DeviationLogEntry, RolloutConfirmation, Profile, UseCase, ClientUseCase, ActivityEntry, ConfigOption, ClientSpoc, ClientNoteEntry } from '@/lib/types'
@@ -199,6 +200,7 @@ export default async function ClientDetailPage({
 
         {/* Export buttons */}
         <div className="flex items-center gap-2 w-full md:w-auto">
+          <RefreshButton />
           <Link
             href={`/clients/${id}/client-update`}
             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors text-sm font-medium flex-1 md:flex-none"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { Plus, Pencil, Trash2, X, Check, Mail, ChevronDown, ChevronUp } from 'lucide-react'
 import { addSpocAction, updateSpocAction, deleteSpocAction } from './actions'
 import type { ClientSpoc } from '@/lib/types'
@@ -81,6 +81,7 @@ interface Props {
 
 export default function ClientSpocs({ spocs: initial, clientId, canEdit }: Props) {
   const [spocs, setSpocs]       = useState(initial)
+  useEffect(() => { setSpocs(initial) }, [initial])
   const [adding, setAdding]     = useState(false)
   const [editingId, setEditing] = useState<string | null>(null)
   const [expandedId, setExpanded] = useState<string | null>(null)
