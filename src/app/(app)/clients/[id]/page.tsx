@@ -77,7 +77,8 @@ export default async function ClientDetailPage({
       { data: planSteps },
       { data: deviationLog },
       { data: rollout },
-      { data: uc },
+      { data: ucGlobal },
+      { data: ucIndustry },
       { data: cuc },
       { data: actLog },
       { data: mem },
@@ -89,7 +90,13 @@ export default async function ClientDetailPage({
       supabase.from('plan_steps').select('*').eq('client_id', id).order('step_order'),
       supabase.from('deviation_log').select('*, author:profiles!author_id(id, full_name, email)').eq('client_id', id).order('created_at', { ascending: false }),
       supabase.from('rollout_confirmations').select('*').eq('client_id', id).maybeSingle(),
-      supabase.from('use_cases').select('*').or(`industry_tag.is.null,industry_tag.eq.${client.industry ?? ''}`),
+      // Two separate .eq()/.is() queries instead of one .or() filter string —
+      // industry names contain '&', '(', ')' which are structurally meaningful
+      // in PostgREST's filter grammar and break when interpolated into .or().
+      supabase.from('use_cases').select('*').is('industry_tag', null),
+      client.industry
+        ? supabase.from('use_cases').select('*').eq('industry_tag', client.industry)
+        : Promise.resolve({ data: [] as UseCase[] }),
       supabase.from('client_use_cases').select('*, use_case:use_cases(*)').eq('client_id', id),
       supabase.from('activity_log').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(50),
       supabase.from('profiles').select('id, full_name, email, role').in('role', ['admin', 'member']).order('full_name'),
@@ -99,7 +106,7 @@ export default async function ClientDetailPage({
       supabase.from('client_notes').select('*').eq('client_id', id).order('created_at', { ascending: false }),
     ])
 
-    useCases = (uc ?? []) as UseCase[]
+    useCases = [...((ucGlobal ?? []) as UseCase[]), ...((ucIndustry ?? []) as UseCase[])]
     clientUseCases = (cuc ?? []) as ClientUseCase[]
     activityLog = (actLog ?? []) as ActivityEntry[]
     members = (mem ?? []) as Profile[]

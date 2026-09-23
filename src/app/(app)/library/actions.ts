@@ -2,6 +2,7 @@
 
 import { getSessionUser } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import type { UseCaseExampleAccount } from '@/lib/types'
 
 export async function createUseCaseAction(formData: FormData) {
   const { supabase, user } = await getSessionUser()
@@ -29,6 +30,40 @@ export async function deleteUseCaseAction(id: string) {
   if (me?.role !== 'admin') return
 
   await supabase.from('use_cases').delete().eq('id', id)
+  revalidatePath('/library')
+}
+
+// Live example accounts (name + account URL) that implementers can point to
+// when demoing this use case — shown both in the library and on a matching
+// client's Growth tab.
+export async function addExampleAccountAction(useCaseId: string, name: string, url: string) {
+  const { supabase, user } = await getSessionUser()
+  if (!user) return
+  if (!name.trim() || !url.trim()) return
+
+  const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (me?.role !== 'admin') return
+
+  const { data: uc } = await supabase.from('use_cases').select('example_accounts').eq('id', useCaseId).single()
+  const existing = (uc?.example_accounts as UseCaseExampleAccount[] | null) ?? []
+  const next = [...existing.filter((a) => a.name !== name.trim()), { name: name.trim(), url: url.trim() }]
+
+  await supabase.from('use_cases').update({ example_accounts: next }).eq('id', useCaseId)
+  revalidatePath('/library')
+}
+
+export async function removeExampleAccountAction(useCaseId: string, name: string) {
+  const { supabase, user } = await getSessionUser()
+  if (!user) return
+
+  const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (me?.role !== 'admin') return
+
+  const { data: uc } = await supabase.from('use_cases').select('example_accounts').eq('id', useCaseId).single()
+  const existing = (uc?.example_accounts as UseCaseExampleAccount[] | null) ?? []
+  const next = existing.filter((a) => a.name !== name)
+
+  await supabase.from('use_cases').update({ example_accounts: next }).eq('id', useCaseId)
   revalidatePath('/library')
 }
 

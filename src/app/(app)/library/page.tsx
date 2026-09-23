@@ -1,10 +1,10 @@
 import { getSessionUser } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft, BookOpen, Plus, Trash2, ExternalLink } from 'lucide-react'
+import { ChevronLeft, BookOpen, Plus, Trash2, ExternalLink, X } from 'lucide-react'
 import type { UseCase } from '@/lib/types'
 import { IS_DEV_BYPASS } from '@/lib/dev-mock'
-import { createUseCaseAction, deleteUseCaseAction } from './actions'
+import { createUseCaseAction, deleteUseCaseAction, addExampleAccountAction, removeExampleAccountAction } from './actions'
 import { revalidatePath } from 'next/cache'
 
 const INDUSTRIES = [
@@ -18,6 +18,21 @@ async function deleteAction(formData: FormData) {
   const id = formData.get('id') as string
   await deleteUseCaseAction(id)
   revalidatePath('/library')
+}
+
+async function addExampleAction(formData: FormData) {
+  'use server'
+  const useCaseId = formData.get('use_case_id') as string
+  const name = formData.get('name') as string
+  const url = formData.get('url') as string
+  await addExampleAccountAction(useCaseId, name, url)
+}
+
+async function removeExampleAction(formData: FormData) {
+  'use server'
+  const useCaseId = formData.get('use_case_id') as string
+  const name = formData.get('name') as string
+  await removeExampleAccountAction(useCaseId, name)
 }
 
 export default async function LibraryPage() {
@@ -162,36 +177,93 @@ export default async function LibraryPage() {
               <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{industry}</h3>
               <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden">
                 {items.map((uc) => (
-                  <div key={uc.id} className="flex items-start gap-4 px-5 py-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm text-gray-900">{uc.title}</p>
-                        {uc.link && (
-                          <a
-                            href={uc.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:text-blue-700"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
+                  <div key={uc.id} className="px-5 py-4">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm text-gray-900">{uc.title}</p>
+                          {uc.link && (
+                            <a
+                              href={uc.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:text-blue-700"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
+                        {uc.description && (
+                          <p className="text-sm text-gray-500 mt-0.5 leading-snug">{uc.description}</p>
                         )}
                       </div>
-                      {uc.description && (
-                        <p className="text-sm text-gray-500 mt-0.5 leading-snug">{uc.description}</p>
+                      {isAdmin && (
+                        <form action={deleteAction}>
+                          <input type="hidden" name="id" value={uc.id} />
+                          <button
+                            type="submit"
+                            className="text-gray-300 hover:text-red-500 transition-colors"
+                            title="Delete use case"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </form>
                       )}
                     </div>
+
+                    {/* Example accounts — real accounts to open when demoing this use case */}
+                    {(uc.example_accounts && uc.example_accounts.length > 0) && (
+                      <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                        {uc.example_accounts.map((acc) => (
+                          <span
+                            key={acc.name}
+                            className="flex items-center gap-1 text-[11px] font-medium pl-2 pr-1 py-0.5 rounded-full bg-blue-50 border border-blue-200"
+                          >
+                            <a href={acc.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700">
+                              {acc.name}
+                            </a>
+                            {isAdmin && (
+                              <form action={removeExampleAction}>
+                                <input type="hidden" name="use_case_id" value={uc.id} />
+                                <input type="hidden" name="name" value={acc.name} />
+                                <button type="submit" title="Remove example account" className="text-blue-300 hover:text-red-500">
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </form>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
                     {isAdmin && (
-                      <form action={deleteAction}>
-                        <input type="hidden" name="id" value={uc.id} />
-                        <button
-                          type="submit"
-                          className="text-gray-300 hover:text-red-500 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </form>
+                      <details className="mt-2 group">
+                        <summary className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer list-none inline-flex items-center gap-1">
+                          <Plus className="w-3 h-3" /> Add example account
+                        </summary>
+                        <form action={addExampleAction} className="flex items-center gap-2 mt-2">
+                          <input type="hidden" name="use_case_id" value={uc.id} />
+                          <input
+                            name="name"
+                            required
+                            placeholder="Account name"
+                            className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 w-36"
+                          />
+                          <input
+                            name="url"
+                            type="url"
+                            required
+                            placeholder="https://account.taqtics.co/"
+                            className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1"
+                          />
+                          <button
+                            type="submit"
+                            className="px-2.5 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-semibold hover:bg-gray-800 transition-colors"
+                          >
+                            Add
+                          </button>
+                        </form>
+                      </details>
                     )}
                   </div>
                 ))}
