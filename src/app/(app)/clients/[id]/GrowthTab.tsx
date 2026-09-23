@@ -58,6 +58,7 @@ export default function GrowthTab({
           <p className="font-semibold mb-0.5">Growth & upsell tracker</p>
           <p className="text-blue-700">
             Toggle which use cases this client already gets value from. This drives the Growth section in the Client Update export.
+            The &quot;Live examples&quot; links below are for your own reference — they never appear in the export.
           </p>
         </div>
       </div>
@@ -105,6 +106,22 @@ export default function GrowthTab({
                 </div>
                 {uc.description && (
                   <p className="text-xs text-gray-500 mt-0.5 leading-snug">{uc.description}</p>
+                )}
+                {uc.example_accounts && uc.example_accounts.length > 0 && (
+                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wide">Live examples:</span>
+                    {uc.example_accounts.map((acc) => (
+                      <a
+                        key={acc.name}
+                        href={acc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                      >
+                        {acc.name}
+                      </a>
+                    ))}
+                  </div>
                 )}
               </div>
               <span className={cn(

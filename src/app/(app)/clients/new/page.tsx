@@ -7,22 +7,8 @@ import SubmitButton from './SubmitButton'
 import { ChevronLeft, ExternalLink } from 'lucide-react'
 import { IS_DEV_BYPASS, MOCK_MEMBERS } from '@/lib/dev-mock'
 import { TZ_AHEAD_OPTIONS, TZ_BEHIND_OPTIONS, TZ_SAME_AS_IST, WEEKDAYS } from '@/lib/schedule-options'
+import { INDUSTRIES } from '@/lib/industries'
 import type { Profile, ConfigOption } from '@/lib/types'
-
-const INDUSTRIES = [
-  'Retail',
-  'Food & Beverage (QSR)',
-  'Hospitality',
-  'Healthcare',
-  'Education',
-  'Financial Services',
-  'Manufacturing',
-  'E-commerce',
-  'Technology',
-  'Real Estate',
-  'Logistics',
-  'Other',
-]
 
 async function createClientAction(formData: FormData) {
   'use server'

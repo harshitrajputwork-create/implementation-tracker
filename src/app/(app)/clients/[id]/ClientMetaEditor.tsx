@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { Pencil, Check, X, ExternalLink, Trash2 } from 'lucide-react'
 import { updateClientMetaAction, deleteClientAction } from './actions'
 import { TZ_AHEAD_OPTIONS, TZ_BEHIND_OPTIONS, TZ_SAME_AS_IST, WEEKDAYS, parseWeeklyOffs } from '@/lib/schedule-options'
+import { INDUSTRIES } from '@/lib/industries'
 import type { Client, Profile, ConfigOption } from '@/lib/types'
 
 const TICKET_SIZE_CFG: Record<string, { label: string; color: string }> = {
@@ -251,7 +252,10 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
               {/* Industry + Size */}
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Industry">
-                  <input value={industry} onChange={(e) => setIndustry(e.target.value)} className={inputCls} placeholder="e.g. Food & Beverage" />
+                  <select value={industry} onChange={(e) => setIndustry(e.target.value)} className={inputCls}>
+                    <option value="">Select…</option>
+                    {INDUSTRIES.map((ind) => <option key={ind} value={ind}>{ind}</option>)}
+                  </select>
                 </Field>
                 <Field label="Company size">
                   <input value={size} onChange={(e) => setSize(e.target.value)} className={inputCls} placeholder="e.g. 12 stores" />

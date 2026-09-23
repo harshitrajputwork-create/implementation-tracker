@@ -111,12 +111,18 @@ export interface RolloutConfirmation {
   set_by_profile?: Profile | null
 }
 
+export interface UseCaseExampleAccount {
+  name: string
+  url: string
+}
+
 export interface UseCase {
   id: string
   title: string
   description: string | null
   industry_tag: string | null
   link: string | null
+  example_accounts: UseCaseExampleAccount[] | null
   created_by: string | null
   created_at: string
 }
