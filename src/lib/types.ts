@@ -57,7 +57,9 @@ export interface TrialAccount {
   trial_url: string | null
   sales_spoc: string | null
   country: string | null
-  tz_offset: string | null
+  company_size: string | null
+  modules: string[] | null
+  use_case_notes: string | null
   status: TrialStatus
   trial_start_date: string | null
   trial_end_date: string | null
@@ -174,6 +176,7 @@ export interface AppNotification {
   actor_name: string | null
   type: NotificationType
   client_id: string | null
+  trial_account_id: string | null
   client_name: string | null
   context: string | null
   preview: string | null

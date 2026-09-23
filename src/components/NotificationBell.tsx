@@ -159,13 +159,17 @@ export default function NotificationBell({ expanded }: Props) {
                 {upcoming.length > 0 && (
                   <p className="px-4 pt-2.5 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Mentions</p>
                 )}
-                {notifications.map((n) => (
+                {notifications.map((n) => {
+                  const isTrialNotif = !!n.trial_account_id
+                  return (
                   <button
                     key={n.id}
                     onClick={() => openNotification(n)}
-                    className={`flex items-start gap-2.5 w-full px-4 py-2.5 text-left hover:bg-gray-50 transition-colors ${!n.is_read ? 'bg-blue-50/50' : ''}`}
+                    className={`flex items-start gap-2.5 w-full px-4 py-2.5 text-left hover:bg-gray-50 transition-colors border-l-2 ${
+                      isTrialNotif ? 'border-l-purple-400' : 'border-l-blue-400'
+                    } ${!n.is_read ? 'bg-blue-50/50' : ''}`}
                   >
-                    <AtSign className="w-3.5 h-3.5 mt-0.5 text-blue-500 flex-shrink-0" />
+                    <AtSign className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${isTrialNotif ? 'text-purple-500' : 'text-blue-500'}`} />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs text-gray-700">
                         <span className="font-semibold">{n.actor_name ?? 'Someone'}</span> mentioned you
@@ -176,7 +180,8 @@ export default function NotificationBell({ expanded }: Props) {
                     </div>
                     {!n.is_read && <span className="w-1.5 h-1.5 rounded-full bg-blue-600 flex-shrink-0 mt-1.5" />}
                   </button>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>

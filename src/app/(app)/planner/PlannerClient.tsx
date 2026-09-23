@@ -276,7 +276,7 @@ export default function PlannerClient({
               onClick={() => setTeamOnly((v) => !v)}
               title={teamOnly ? 'Showing team notes only — safe to screen-share' : 'Showing your personal notes too'}
               className={`flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full border flex-shrink-0 transition-colors ${
-                teamOnly ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300'
+                teamOnly ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300'
               }`}
             >
               {teamOnly ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
@@ -287,10 +287,10 @@ export default function PlannerClient({
             {latestUpdates.filter((u) => !teamOnly || !u.isPersonal).map((u) => (
               <div key={u.id} className="px-4 py-3">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <Link href={entityLink(u.clientId, u.trialAccountId, u.id)} className={`text-sm font-semibold hover:underline ${u.trialAccountId ? 'text-teal-700' : 'text-blue-600'}`}>
+                  <Link href={entityLink(u.clientId, u.trialAccountId, u.id)} className={`text-sm font-semibold hover:underline ${u.trialAccountId ? 'text-purple-700' : 'text-blue-600'}`}>
                     {u.clientName}
                   </Link>
-                  {u.trialAccountId && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-600 border border-teal-200">Trial</span>}
+                  {u.trialAccountId && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-200">Trial</span>}
                   {u.isPersonal && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Personal</span>}
                   <span className="text-xs text-gray-400">{relativeDay(u.createdAt)} · {u.authorName}</span>
                 </div>
@@ -321,7 +321,7 @@ export default function PlannerClient({
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm ${n.deadline_done ? 'text-gray-400 line-through' : 'text-gray-700'}`}>{n.content}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <Link href={entityLink(n.clientId, n.trialAccountId, n.id)} className={`flex items-center gap-1 text-xs hover:underline ${n.trialAccountId ? 'text-teal-700' : 'text-blue-600'}`}>
+                      <Link href={entityLink(n.clientId, n.trialAccountId, n.id)} className={`flex items-center gap-1 text-xs hover:underline ${n.trialAccountId ? 'text-purple-700' : 'text-blue-600'}`}>
                         {n.clientName} <ExternalLink className="w-2.5 h-2.5" />
                       </Link>
                       <span className={`text-xs ${overdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
@@ -415,7 +415,7 @@ function TaskRow({
           {clientName ? (
             <Link href={`/clients/${task.client_id}`} className="text-xs text-blue-600 hover:text-blue-700">· {clientName}</Link>
           ) : trialName ? (
-            <Link href={`/trial/${task.trial_account_id}`} className="text-xs text-teal-700 hover:text-teal-800">· {trialName} (Trial)</Link>
+            <Link href={`/trial/${task.trial_account_id}`} className="text-xs text-purple-700 hover:text-purple-800">· {trialName} (Trial)</Link>
           ) : task.account_name ? (
             <span className="text-xs text-gray-400">· {task.account_name}</span>
           ) : null}

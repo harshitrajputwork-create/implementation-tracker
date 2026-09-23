@@ -113,7 +113,7 @@ export default async function NewClientPage({
   let userId = 'dev-user-1'
   let members = MOCK_MEMBERS
   let configOptions: ConfigOption[] = []
-  let prefill: { name: string; salesSpoc: string; country: string; tzOffset: string } | null = null
+  let prefill: { name: string; salesSpoc: string; country: string; companySize: string; modules: string[] } | null = null
 
   if (!IS_DEV_BYPASS) {
     const { supabase, user } = await getSessionUser()
@@ -125,7 +125,7 @@ export default async function NewClientPage({
       supabase.from('profiles').select('id, full_name, email, role').in('role', ['admin', 'member']).order('full_name'),
       supabase.from('config_options').select('*').order('sort_order'),
       fromTrial
-        ? supabase.from('trial_accounts').select('name, sales_spoc, country, tz_offset').eq('id', fromTrial).single()
+        ? supabase.from('trial_accounts').select('name, sales_spoc, country, company_size, modules').eq('id', fromTrial).single()
         : Promise.resolve({ data: null }),
     ])
 
@@ -138,7 +138,8 @@ export default async function NewClientPage({
         name: trialRes.data.name ?? '',
         salesSpoc: trialRes.data.sales_spoc ?? '',
         country: trialRes.data.country ?? '',
-        tzOffset: trialRes.data.tz_offset ?? '',
+        companySize: trialRes.data.company_size ?? '',
+        modules: trialRes.data.modules ?? [],
       }
     }
   }
@@ -165,7 +166,7 @@ export default async function NewClientPage({
       </div>
 
       {prefill && (
-        <div className="mb-6 px-4 py-3 bg-teal-50 border border-teal-200 rounded-xl text-sm text-teal-800">
+        <div className="mb-6 px-4 py-3 bg-purple-50 border border-purple-200 rounded-xl text-sm text-purple-800">
           Converting from a free trial account — some fields are pre-filled from what you already logged there.
         </div>
       )}
@@ -207,7 +208,7 @@ export default async function NewClientPage({
               </div>
               <div>
                 <label className={labelCls}>Company size</label>
-                <input name="company_size" placeholder="e.g. 12 stores"
+                <input name="company_size" defaultValue={prefill?.companySize ?? ''} placeholder="e.g. 12 stores"
                   className={`${inputCls} placeholder-gray-400`} />
               </div>
             </div>
@@ -259,7 +260,7 @@ export default async function NewClientPage({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>Timezone vs IST</label>
-                <select name="tz_offset" defaultValue={prefill?.tzOffset ?? ''} className={inputCls}>
+                <select name="tz_offset" className={inputCls}>
                   <option value="">— none —</option>
                   <option value={TZ_SAME_AS_IST}>{TZ_SAME_AS_IST}</option>
                   <optgroup label="Ahead of IST">
@@ -302,7 +303,7 @@ export default async function NewClientPage({
                 <div className="flex gap-2 flex-wrap">
                   {moduleOptions.map((o) => (
                     <label key={o.id} className="cursor-pointer">
-                      <input type="checkbox" name="modules" value={o.label} className="sr-only peer" />
+                      <input type="checkbox" name="modules" value={o.label} defaultChecked={prefill?.modules?.includes(o.label)} className="sr-only peer" />
                       <span className="text-xs font-medium px-2.5 py-1 rounded-full border border-gray-200 bg-gray-50 text-gray-600 cursor-pointer transition-all peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600">
                         {o.label}
                       </span>

@@ -4,19 +4,18 @@ import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, FlaskConical, ExternalLink } from 'lucide-react'
 import { addTrialAccountAction } from './actions'
-import { TZ_AHEAD_OPTIONS, TZ_BEHIND_OPTIONS, TZ_SAME_AS_IST } from '@/lib/schedule-options'
 import { daysSince } from '@/lib/utils'
 import type { TrialAccount, TrialStatus, ConfigOption, Profile } from '@/lib/types'
 
 const STATUSES: TrialStatus[] = ['Active', 'Stalled', 'Converted', 'Lost']
 const STATUS_COLOR: Record<TrialStatus, string> = {
-  Active:    'bg-teal-100 text-teal-700 border-teal-200',
+  Active:    'bg-purple-100 text-purple-700 border-purple-200',
   Stalled:   'bg-amber-100 text-amber-700 border-amber-200',
   Converted: 'bg-green-100 text-green-700 border-green-200',
   Lost:      'bg-gray-100 text-gray-500 border-gray-200',
 }
 
-const inputCls = 'text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal-500 bg-white'
+const inputCls = 'text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white'
 
 interface Props {
   initialTrials: TrialAccount[]
@@ -35,7 +34,7 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
   const [trialUrl, setTrialUrl] = useState('')
   const [salesSpoc, setSalesSpoc] = useState('')
   const [country, setCountry] = useState('')
-  const [tzOffset, setTzOffset] = useState('')
+  const [companySize, setCompanySize] = useState('')
 
   const spocOptions    = configOptions.filter((o) => o.config_key === 'sales_spoc')
   const countryOptions = configOptions.filter((o) => o.config_key === 'country')
@@ -55,20 +54,20 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
     setError(null)
     start(async () => {
       const result = await addTrialAccountAction({
-        name, trialUrl, salesSpoc, country, tzOffset,
+        name, trialUrl, salesSpoc, country, companySize,
         trialStartDate: new Date().toISOString().split('T')[0],
       })
       if (result.error) { setError(result.error); return }
       if (result.id) router.push(`/trial/${result.id}`)
     })
-    setName(''); setTrialUrl(''); setSalesSpoc(''); setCountry(''); setTzOffset('')
+    setName(''); setTrialUrl(''); setSalesSpoc(''); setCountry(''); setCompanySize('')
   }
 
   return (
     <div className="max-w-6xl">
       <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center">
-          <FlaskConical className="w-5 h-5 text-teal-600" />
+        <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
+          <FlaskConical className="w-5 h-5 text-purple-500" />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Free Trial</h1>
@@ -90,18 +89,13 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
             <option value="">Country</option>
             {countryOptions.map((o) => <option key={o.id} value={o.label}>{o.label}</option>)}
           </select>
-          <select value={tzOffset} onChange={(e) => setTzOffset(e.target.value)} className={inputCls}>
-            <option value="">Timezone vs IST</option>
-            <option value={TZ_SAME_AS_IST}>{TZ_SAME_AS_IST}</option>
-            <optgroup label="Ahead of IST">{TZ_AHEAD_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}</optgroup>
-            <optgroup label="Behind IST">{TZ_BEHIND_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}</optgroup>
-          </select>
+          <input value={companySize} onChange={(e) => setCompanySize(e.target.value)} placeholder="Size of account" className={inputCls} />
         </div>
         <div className="flex justify-end">
           <button
             onClick={addTrial}
             disabled={isPending || !name.trim()}
-            className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-40 transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 bg-purple-500 text-white text-sm font-semibold rounded-lg hover:bg-purple-600 disabled:opacity-40 transition-colors"
           >
             <Plus className="w-4 h-4" /> {isPending ? 'Saving…' : 'Add trial account'}
           </button>
@@ -121,7 +115,7 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
-            className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${statusFilter === s ? STATUS_COLOR[s] + ' ring-1 ring-offset-1 ring-teal-400' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
+            className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${statusFilter === s ? STATUS_COLOR[s] + ' ring-1 ring-offset-1 ring-purple-400' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
           >
             {s} ({counts[s] ?? 0})
           </button>
@@ -153,10 +147,10 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
                     <tr
                       key={t.id}
                       onClick={() => router.push(`/trial/${t.id}`)}
-                      className="hover:bg-teal-50/40 transition-colors cursor-pointer group"
+                      className="hover:bg-purple-50/40 transition-colors cursor-pointer group"
                     >
                       <td className="px-6 py-4">
-                        <p className="font-semibold text-gray-900 group-hover:text-teal-700 transition-colors">{t.name}</p>
+                        <p className="font-semibold text-gray-900 group-hover:text-purple-700 transition-colors">{t.name}</p>
                         <p className="text-xs text-gray-400">{owner?.full_name ?? owner?.email ?? ''}</p>
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-600">{t.country ?? '—'}</td>
@@ -172,7 +166,7 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="text-gray-300 hover:text-teal-600 transition-colors"
+                            className="text-gray-300 hover:text-purple-600 transition-colors"
                             title="Open trial URL"
                           >
                             <ExternalLink className="w-4 h-4" />

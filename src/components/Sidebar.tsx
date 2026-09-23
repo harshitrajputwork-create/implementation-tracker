@@ -53,8 +53,35 @@ export default function Sidebar({ user, clients }: SidebarProps) {
   }, [pathname])
 
   const expanded = pinned || hovered || mobileOpen
-  const isTrial = pathname.startsWith('/trial')
-  const accentBg = isTrial ? 'bg-teal-600' : 'bg-blue-600'
+
+  // Mode is derived from the route when the route is mode-defining (/trial/*,
+  // /dashboard, /clients/*), and otherwise falls back to the last mode-defining
+  // route visited (stored in localStorage) — so shared routes like /planner
+  // stay in whichever mode the user was already in instead of resetting to
+  // Implementation.
+  const [storedMode, setStoredMode] = useState<'trial' | 'impl'>('impl')
+  useEffect(() => {
+    const m = localStorage.getItem('app_mode')
+    if (m === 'trial' || m === 'impl') setStoredMode(m)
+  }, [])
+
+  const pathIsTrial = pathname.startsWith('/trial')
+  const pathIsImpl  = pathname.startsWith('/dashboard') || pathname.startsWith('/clients')
+  const isTrial = pathIsTrial ? true : pathIsImpl ? false : storedMode === 'trial'
+
+  useEffect(() => {
+    if (pathIsTrial && storedMode !== 'trial') {
+      localStorage.setItem('app_mode', 'trial')
+      setStoredMode('trial')
+    } else if (pathIsImpl && storedMode !== 'impl') {
+      localStorage.setItem('app_mode', 'impl')
+      setStoredMode('impl')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+
+  const accentBg = isTrial ? 'bg-purple-500' : 'bg-blue-600'
+  const settingsHref = isTrial ? '/trial/settings' : '/settings'
 
   function togglePin() {
     const next = !pinned
@@ -158,6 +185,15 @@ export default function Sidebar({ user, clients }: SidebarProps) {
         {expanded ? (
           <div className="flex items-center gap-0.5 bg-slate-800 rounded-lg p-0.5 mt-3">
             <Link
+              href="/trial"
+              className={cn(
+                'flex-1 text-center text-xs font-medium px-2 py-1.5 rounded-md transition-colors',
+                isTrial ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-slate-200',
+              )}
+            >
+              Trial
+            </Link>
+            <Link
               href="/dashboard"
               className={cn(
                 'flex-1 text-center text-xs font-medium px-2 py-1.5 rounded-md transition-colors',
@@ -165,15 +201,6 @@ export default function Sidebar({ user, clients }: SidebarProps) {
               )}
             >
               Implementation
-            </Link>
-            <Link
-              href="/trial"
-              className={cn(
-                'flex-1 text-center text-xs font-medium px-2 py-1.5 rounded-md transition-colors',
-                isTrial ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-slate-200',
-              )}
-            >
-              Trial
             </Link>
           </div>
         ) : (
@@ -276,8 +303,8 @@ export default function Sidebar({ user, clients }: SidebarProps) {
       {isAdmin && (
         <div className={cn('border-t border-slate-800 py-2 flex-shrink-0 space-y-0.5', expanded ? 'px-3' : 'px-2')}>
           {[
-            { href: '/library',  label: 'Use Cases', icon: BookOpen },
-            { href: '/settings', label: 'Settings',  icon: Settings },
+            { href: '/library',    label: 'Use Cases', icon: BookOpen },
+            { href: settingsHref,  label: 'Settings',  icon: Settings },
           ].map(({ href, label, icon: Icon }) => {
             const isActive = pathname.startsWith(href)
             return (

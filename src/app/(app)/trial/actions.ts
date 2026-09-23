@@ -11,7 +11,7 @@ export async function addTrialAccountAction(fields: {
   trialUrl?: string
   salesSpoc?: string
   country?: string
-  tzOffset?: string
+  companySize?: string
   trialStartDate?: string
 }): Promise<{ error?: string; id?: string }> {
   const { supabase, user } = await getSessionUser()
@@ -25,7 +25,7 @@ export async function addTrialAccountAction(fields: {
       trial_url: fields.trialUrl?.trim() || null,
       sales_spoc: fields.salesSpoc || null,
       country: fields.country || null,
-      tz_offset: fields.tzOffset || null,
+      company_size: fields.companySize?.trim() || null,
       trial_start_date: fields.trialStartDate || null,
       owner_id: user.id,
       created_by: user.id,
@@ -45,7 +45,9 @@ export async function updateTrialAccountAction(
     trialUrl?: string | null
     salesSpoc?: string | null
     country?: string | null
-    tzOffset?: string | null
+    companySize?: string | null
+    modules?: string[]
+    useCaseNotes?: string | null
     status?: TrialStatus
     trialStartDate?: string | null
     trialEndDate?: string | null
@@ -60,7 +62,9 @@ export async function updateTrialAccountAction(
   if (fields.trialUrl !== undefined) payload.trial_url = fields.trialUrl?.trim() || null
   if (fields.salesSpoc !== undefined) payload.sales_spoc = fields.salesSpoc || null
   if (fields.country !== undefined) payload.country = fields.country || null
-  if (fields.tzOffset !== undefined) payload.tz_offset = fields.tzOffset || null
+  if (fields.companySize !== undefined) payload.company_size = fields.companySize?.trim() || null
+  if (fields.modules !== undefined) payload.modules = fields.modules
+  if (fields.useCaseNotes !== undefined) payload.use_case_notes = fields.useCaseNotes?.trim() || null
   if (fields.status !== undefined) payload.status = fields.status
   if (fields.trialStartDate !== undefined) payload.trial_start_date = fields.trialStartDate || null
   if (fields.trialEndDate !== undefined) payload.trial_end_date = fields.trialEndDate || null
@@ -119,7 +123,7 @@ export async function addTrialNoteAction(
 
   if (mentionedIds.length > 0) {
     await notifyMentions(supabase, mentionedIds, user.id, authorName, {
-      clientId: trialAccountId,
+      trialAccountId: trialAccountId,
       clientName: trial?.name ?? 'a trial account',
       context: 'Trial note',
       preview: content.trim(),
