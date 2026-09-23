@@ -116,6 +116,11 @@ export interface RolloutConfirmation {
 export interface UseCaseExampleAccount {
   name: string
   url: string
+  // The exact checklist/audit inside that account demoing this use case —
+  // opening the account URL still lands on its homepage (no deep-link URL
+  // scheme is known), so these tell the implementer what to search for.
+  checklistTitle?: string
+  formId?: string
 }
 
 export interface UseCase {

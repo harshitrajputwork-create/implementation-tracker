@@ -25,7 +25,9 @@ async function addExampleAction(formData: FormData) {
   const useCaseId = formData.get('use_case_id') as string
   const name = formData.get('name') as string
   const url = formData.get('url') as string
-  await addExampleAccountAction(useCaseId, name, url)
+  const checklistTitle = formData.get('checklist_title') as string
+  const formId = formData.get('form_id') as string
+  await addExampleAccountAction(useCaseId, name, url, checklistTitle, formId)
 }
 
 async function removeExampleAction(formData: FormData) {
@@ -217,16 +219,22 @@ export default async function LibraryPage() {
                         {uc.example_accounts.map((acc) => (
                           <span
                             key={acc.name}
-                            className="flex items-center gap-1 text-[11px] font-medium pl-2 pr-1 py-0.5 rounded-full bg-blue-50 border border-blue-200"
+                            title={acc.checklistTitle ? `Search for: ${acc.checklistTitle}${acc.formId ? ` (${acc.formId})` : ''}` : undefined}
+                            className="flex items-center gap-1.5 pl-2 pr-1 py-1 rounded-full bg-blue-50 border border-blue-200"
                           >
-                            <a href={acc.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700">
+                            <a href={acc.url} target="_blank" rel="noopener noreferrer" className="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline">
                               {acc.name}
                             </a>
+                            {acc.checklistTitle && (
+                              <span className="text-[10px] text-blue-400 truncate max-w-[180px]">
+                                · {acc.checklistTitle}{acc.formId ? ` (${acc.formId})` : ''}
+                              </span>
+                            )}
                             {isAdmin && (
                               <form action={removeExampleAction}>
                                 <input type="hidden" name="use_case_id" value={uc.id} />
                                 <input type="hidden" name="name" value={acc.name} />
-                                <button type="submit" title="Remove example account" className="text-blue-300 hover:text-red-500">
+                                <button type="submit" title="Remove example account" className="text-blue-300 hover:text-red-500 flex-shrink-0">
                                   <X className="w-3 h-3" />
                                 </button>
                               </form>
@@ -241,20 +249,30 @@ export default async function LibraryPage() {
                         <summary className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer list-none inline-flex items-center gap-1">
                           <Plus className="w-3 h-3" /> Add example account
                         </summary>
-                        <form action={addExampleAction} className="flex items-center gap-2 mt-2">
+                        <form action={addExampleAction} className="flex items-center gap-2 mt-2 flex-wrap">
                           <input type="hidden" name="use_case_id" value={uc.id} />
                           <input
                             name="name"
                             required
                             placeholder="Account name"
-                            className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 w-36"
+                            className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 w-32"
                           />
                           <input
                             name="url"
                             type="url"
                             required
                             placeholder="https://account.taqtics.co/"
-                            className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1"
+                            className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-[160px]"
+                          />
+                          <input
+                            name="checklist_title"
+                            placeholder="Checklist title (optional)"
+                            className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 w-40"
+                          />
+                          <input
+                            name="form_id"
+                            placeholder="Form ID (optional)"
+                            className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 w-28"
                           />
                           <button
                             type="submit"

@@ -36,7 +36,13 @@ export async function deleteUseCaseAction(id: string) {
 // Live example accounts (name + account URL) that implementers can point to
 // when demoing this use case — shown both in the library and on a matching
 // client's Growth tab.
-export async function addExampleAccountAction(useCaseId: string, name: string, url: string) {
+export async function addExampleAccountAction(
+  useCaseId: string,
+  name: string,
+  url: string,
+  checklistTitle?: string,
+  formId?: string,
+) {
   const { supabase, user } = await getSessionUser()
   if (!user) return
   if (!name.trim() || !url.trim()) return
@@ -46,7 +52,10 @@ export async function addExampleAccountAction(useCaseId: string, name: string, u
 
   const { data: uc } = await supabase.from('use_cases').select('example_accounts').eq('id', useCaseId).single()
   const existing = (uc?.example_accounts as UseCaseExampleAccount[] | null) ?? []
-  const next = [...existing.filter((a) => a.name !== name.trim()), { name: name.trim(), url: url.trim() }]
+  const entry: UseCaseExampleAccount = { name: name.trim(), url: url.trim() }
+  if (checklistTitle?.trim()) entry.checklistTitle = checklistTitle.trim()
+  if (formId?.trim()) entry.formId = formId.trim()
+  const next = [...existing.filter((a) => a.name !== name.trim()), entry]
 
   await supabase.from('use_cases').update({ example_accounts: next }).eq('id', useCaseId)
   revalidatePath('/library')

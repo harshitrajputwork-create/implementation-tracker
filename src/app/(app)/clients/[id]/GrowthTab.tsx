@@ -108,18 +108,28 @@ export default function GrowthTab({
                   <p className="text-xs text-gray-500 mt-0.5 leading-snug">{uc.description}</p>
                 )}
                 {uc.example_accounts && uc.example_accounts.length > 0 && (
-                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     <span className="text-[10px] text-gray-400 uppercase tracking-wide">Live examples:</span>
                     {uc.example_accounts.map((acc) => (
-                      <a
+                      <span
                         key={acc.name}
-                        href={acc.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                        title={acc.checklistTitle ? `Search for: ${acc.checklistTitle}${acc.formId ? ` (${acc.formId})` : ''}` : undefined}
+                        className="flex items-center gap-1"
                       >
-                        {acc.name}
-                      </a>
+                        <a
+                          href={acc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                        >
+                          {acc.name}
+                        </a>
+                        {acc.checklistTitle && (
+                          <span className="text-[10px] text-gray-400 truncate max-w-[160px]">
+                            · {acc.checklistTitle}{acc.formId ? ` (${acc.formId})` : ''}
+                          </span>
+                        )}
+                      </span>
                     ))}
                   </div>
                 )}
