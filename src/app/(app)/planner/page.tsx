@@ -6,11 +6,33 @@ import BookmarkletLink from './BookmarkletLink'
 import { IS_DEV_BYPASS, MOCK_PROFILE, MOCK_CLIENTS } from '@/lib/dev-mock'
 import type { PlannerTask } from '@/lib/types'
 
+interface NoteDeadline {
+  id: string
+  clientId: string | null
+  trialAccountId: string | null
+  clientName: string
+  content: string
+  deadline: string
+  deadline_done: boolean
+}
+
+interface LatestUpdate {
+  id: string
+  clientId: string | null
+  trialAccountId: string | null
+  clientName: string
+  content: string
+  authorName: string
+  createdAt: string
+  isPersonal: boolean
+}
+
 export default async function PlannerPage() {
   let tasks: PlannerTask[] = []
   let clients: { id: string; name: string }[] = []
-  let noteDeadlines: { id: string; clientId: string; clientName: string; content: string; deadline: string; deadline_done: boolean }[] = []
-  let latestUpdates: { id: string; clientId: string; clientName: string; content: string; authorName: string; createdAt: string }[] = []
+  let trials: { id: string; name: string }[] = []
+  let noteDeadlines: NoteDeadline[] = []
+  let latestUpdates: LatestUpdate[] = []
   let teamSuggestions: string[] = []
   let personSuggestions: string[] = []
 
@@ -20,48 +42,56 @@ export default async function PlannerPage() {
     const { supabase, user } = await getSessionUser()
     if (!user) redirect('/login')
 
-    const [{ data: t }, { data: c }, { data: notes }, { data: recent }] = await Promise.all([
+    const [{ data: t }, { data: c }, { data: trialRows }, { data: notes }, { data: recent }] = await Promise.all([
       supabase.from('planner_tasks').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('clients').select('id, name').order('name'),
+      supabase.from('trial_accounts').select('id, name').order('name'),
+      // My own deadline-bearing notes, on either a client or a trial account.
       supabase
         .from('client_notes')
-        .select('id, client_id, content, deadline, deadline_done, clients(name)')
+        .select('id, client_id, trial_account_id, content, deadline, deadline_done, clients(name), trial_accounts(name)')
         .eq('author_id', user.id)
         .not('deadline', 'is', null)
         .order('deadline'),
-      // Latest note per client (any author I can see — RLS already hides other
-      // people's personal notes). Ordered desc + deduped client-side below.
+      // Latest note per account (any author I can see — RLS already hides
+      // other people's personal notes). Deduped client-side below.
       supabase
         .from('client_notes')
-        .select('id, client_id, content, author_name, created_at, clients(name)')
+        .select('id, client_id, trial_account_id, content, author_name, created_at, is_personal, clients(name), trial_accounts(name)')
         .order('created_at', { ascending: false })
         .limit(200),
     ])
 
     tasks = (t ?? []) as PlannerTask[]
     clients = (c ?? []) as { id: string; name: string }[]
+    trials = (trialRows ?? []) as { id: string; name: string }[]
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     noteDeadlines = (notes ?? []).map((n: any) => ({
       id: n.id,
       clientId: n.client_id,
-      clientName: n.clients?.name ?? 'Client',
+      trialAccountId: n.trial_account_id,
+      clientName: n.clients?.name ?? n.trial_accounts?.name ?? 'Account',
       content: n.content,
       deadline: n.deadline,
       deadline_done: n.deadline_done,
     }))
 
-    const seenClients = new Set<string>()
+    const seen = new Set<string>()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const n of (recent ?? []) as any[]) {
-      if (seenClients.has(n.client_id)) continue
-      seenClients.add(n.client_id)
+      const key = n.client_id ?? n.trial_account_id
+      if (!key || seen.has(key)) continue
+      seen.add(key)
       latestUpdates.push({
         id: n.id,
         clientId: n.client_id,
-        clientName: n.clients?.name ?? 'Client',
+        trialAccountId: n.trial_account_id,
+        clientName: n.clients?.name ?? n.trial_accounts?.name ?? 'Account',
         content: n.content,
         authorName: n.author_name ?? 'Someone',
         createdAt: n.created_at,
+        isPersonal: n.is_personal,
       })
     }
 
@@ -71,6 +101,7 @@ export default async function PlannerPage() {
 
   const accountSuggestions = [...new Set([
     ...clients.map((c) => c.name),
+    ...trials.map((t) => t.name),
     ...tasks.map((t) => t.account_name).filter((v): v is string => !!v),
   ])]
 
@@ -93,6 +124,7 @@ export default async function PlannerPage() {
       <PlannerClient
         initialTasks={tasks}
         clients={clients}
+        trials={trials}
         noteDeadlines={noteDeadlines}
         latestUpdates={latestUpdates}
         teamSuggestions={teamSuggestions}

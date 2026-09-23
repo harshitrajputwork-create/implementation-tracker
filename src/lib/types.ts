@@ -44,8 +44,28 @@ export interface Client {
   account_url: string | null
   weekly_offs: string | null
   tz_offset: string | null
+  billing_type: string | null
   owner?: Profile | null
   plan_steps?: PlanStep[]
+}
+
+export type TrialStatus = 'Active' | 'Stalled' | 'Converted' | 'Lost'
+
+export interface TrialAccount {
+  id: string
+  name: string
+  trial_url: string | null
+  sales_spoc: string | null
+  country: string | null
+  tz_offset: string | null
+  status: TrialStatus
+  trial_start_date: string | null
+  trial_end_date: string | null
+  owner_id: string | null
+  converted_client_id: string | null
+  created_by: string | null
+  created_at: string
+  owner?: Profile | null
 }
 
 export interface ConfigOption {
@@ -158,7 +178,8 @@ export interface AppNotification {
 
 export interface ClientNoteEntry {
   id: string
-  client_id: string
+  client_id: string | null
+  trial_account_id: string | null
   author_id: string
   author_name: string | null
   content: string
@@ -187,6 +208,7 @@ export interface PlannerTask {
   team: string | null
   person: string | null
   client_id: string | null
+  trial_account_id: string | null
   account_name: string | null
   task: string
   priority: TaskPriority

@@ -54,6 +54,7 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
   const [accountUrl, setAccountUrl] = useState(client.account_url ?? '')
   const [weeklyOffDays, setWeeklyOffDays] = useState<string[]>(parseWeeklyOffs(client.weekly_offs))
   const [tzOffset,   setTzOffset]   = useState(client.tz_offset ?? '')
+  const [billingType, setBillingType] = useState(client.billing_type ?? '')
 
   function toggleWeeklyOffDay(day: string) {
     setWeeklyOffDays((prev) =>
@@ -87,6 +88,7 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
         account_url: accountUrl.trim() || null,
         weekly_offs: weeklyOffDays.length > 0 ? weeklyOffDays.join(', ') : null,
         tz_offset: tzOffset || null,
+        billing_type: billingType || null,
       })
       setOpen(false)
     })
@@ -181,19 +183,28 @@ export default function ClientMetaEditor({ client, members, configOptions, canEd
                 </Field>
               </div>
 
-              {/* Timezone */}
-              <Field label="Timezone vs IST">
-                <select value={tzOffset} onChange={(e) => setTzOffset(e.target.value)} className={inputCls}>
-                  <option value="">— none —</option>
-                  <option value={TZ_SAME_AS_IST}>{TZ_SAME_AS_IST}</option>
-                  <optgroup label="Ahead of IST">
-                    {TZ_AHEAD_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                  </optgroup>
-                  <optgroup label="Behind IST">
-                    {TZ_BEHIND_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                  </optgroup>
-                </select>
-              </Field>
+              {/* Timezone + Billing type */}
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Timezone vs IST">
+                  <select value={tzOffset} onChange={(e) => setTzOffset(e.target.value)} className={inputCls}>
+                    <option value="">— none —</option>
+                    <option value={TZ_SAME_AS_IST}>{TZ_SAME_AS_IST}</option>
+                    <optgroup label="Ahead of IST">
+                      {TZ_AHEAD_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </optgroup>
+                    <optgroup label="Behind IST">
+                      {TZ_BEHIND_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </optgroup>
+                  </select>
+                </Field>
+                <Field label="Billing type">
+                  <select value={billingType} onChange={(e) => setBillingType(e.target.value)} className={inputCls}>
+                    <option value="">— none —</option>
+                    <option value="User-wise">User-wise</option>
+                    <option value="Store-wise">Store-wise</option>
+                  </select>
+                </Field>
+              </div>
 
               {/* Weekly offs */}
               <Field label="Weekly offs">

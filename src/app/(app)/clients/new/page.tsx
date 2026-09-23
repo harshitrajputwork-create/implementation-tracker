@@ -41,6 +41,8 @@ async function createClientAction(formData: FormData) {
   const weekly_offs_days = formData.getAll('weekly_offs') as string[]
   const weekly_offs = weekly_offs_days.length > 0 ? weekly_offs_days.join(', ') : ''
   const tz_offset = formData.get('tz_offset') as string
+  const billing_type = formData.get('billing_type') as string
+  const from_trial = formData.get('from_trial') as string
 
   if (IS_DEV_BYPASS) {
     // In dev mode, simulate redirect to a mock client
@@ -69,6 +71,7 @@ async function createClientAction(formData: FormData) {
         account_url: account_url || null,
         weekly_offs: weekly_offs || null,
         tz_offset: tz_offset || null,
+        billing_type: billing_type || null,
         created_by: user.id,
       })
       .select('id')
@@ -81,6 +84,13 @@ async function createClientAction(formData: FormData) {
 
   if (error || !client) {
     throw new Error(error?.message ?? 'Could not create the client record.')
+  }
+
+  if (from_trial) {
+    await supabase
+      .from('trial_accounts')
+      .update({ status: 'Converted', converted_client_id: client.id })
+      .eq('id', from_trial)
   }
 
   const template = templateRows && templateRows.length > 0 ? templateRows : PLAN_TEMPLATE
@@ -108,26 +118,43 @@ const TICKET_SIZE_COLORS: Record<string, string> = {
   XL:     'bg-teal-600 text-white border-teal-600',
 }
 
-export default async function NewClientPage() {
+export default async function NewClientPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ fromTrial?: string }>
+}) {
+  const { fromTrial } = await searchParams
   let userId = 'dev-user-1'
   let members = MOCK_MEMBERS
   let configOptions: ConfigOption[] = []
+  let prefill: { name: string; salesSpoc: string; country: string; tzOffset: string } | null = null
 
   if (!IS_DEV_BYPASS) {
     const { supabase, user } = await getSessionUser()
     if (!user) redirect('/login')
     userId = user.id
 
-    const [{ data: profile }, { data: m }, { data: opts }] = await Promise.all([
+    const [{ data: profile }, { data: m }, { data: opts }, trialRes] = await Promise.all([
       supabase.from('profiles').select('role').eq('id', user.id).single(),
       supabase.from('profiles').select('id, full_name, email, role').in('role', ['admin', 'member']).order('full_name'),
       supabase.from('config_options').select('*').order('sort_order'),
+      fromTrial
+        ? supabase.from('trial_accounts').select('name, sales_spoc, country, tz_offset').eq('id', fromTrial).single()
+        : Promise.resolve({ data: null }),
     ])
 
     if (profile?.role === 'visitor') redirect('/dashboard')
 
     members = (m ?? []) as Profile[]
     configOptions = (opts ?? []) as ConfigOption[]
+    if (trialRes.data) {
+      prefill = {
+        name: trialRes.data.name ?? '',
+        salesSpoc: trialRes.data.sales_spoc ?? '',
+        country: trialRes.data.country ?? '',
+        tzOffset: trialRes.data.tz_offset ?? '',
+      }
+    }
   }
 
   const spocOptions    = configOptions.filter((o) => o.config_key === 'sales_spoc')
@@ -151,7 +178,14 @@ export default async function NewClientPage() {
         </p>
       </div>
 
+      {prefill && (
+        <div className="mb-6 px-4 py-3 bg-teal-50 border border-teal-200 rounded-xl text-sm text-teal-800">
+          Converting from a free trial account — some fields are pre-filled from what you already logged there.
+        </div>
+      )}
+
       <form action={createClientAction}>
+        {fromTrial && <input type="hidden" name="from_trial" value={fromTrial} />}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
 
           {/* ── LEFT COLUMN ── */}
@@ -159,7 +193,7 @@ export default async function NewClientPage() {
             {/* Client name */}
             <div>
               <label className={labelCls}>Client name <span className="text-red-500">*</span></label>
-              <input name="name" required placeholder="e.g. Lenskart, Wow Momo, PVR Inox"
+              <input name="name" required defaultValue={prefill?.name} placeholder="e.g. Lenskart, Wow Momo, PVR Inox"
                 className={`${inputCls} placeholder-gray-400`} />
             </div>
 
@@ -221,33 +255,43 @@ export default async function NewClientPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>Sales SPOC</label>
-                <select name="sales_spoc" className={inputCls}>
+                <select name="sales_spoc" defaultValue={prefill?.salesSpoc ?? ''} className={inputCls}>
                   <option value="">— none —</option>
                   {spocOptions.map((o) => <option key={o.id} value={o.label}>{o.label}</option>)}
                 </select>
               </div>
               <div>
                 <label className={labelCls}>Country</label>
-                <select name="country" className={inputCls}>
+                <select name="country" defaultValue={prefill?.country ?? ''} className={inputCls}>
                   <option value="">— none —</option>
                   {countryOptions.map((o) => <option key={o.id} value={o.label}>{o.label}</option>)}
                 </select>
               </div>
             </div>
 
-            {/* Timezone */}
-            <div>
-              <label className={labelCls}>Timezone vs IST</label>
-              <select name="tz_offset" className={inputCls}>
-                <option value="">— none —</option>
-                <option value={TZ_SAME_AS_IST}>{TZ_SAME_AS_IST}</option>
-                <optgroup label="Ahead of IST">
-                  {TZ_AHEAD_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                </optgroup>
-                <optgroup label="Behind IST">
-                  {TZ_BEHIND_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                </optgroup>
-              </select>
+            {/* Timezone + Billing type */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Timezone vs IST</label>
+                <select name="tz_offset" defaultValue={prefill?.tzOffset ?? ''} className={inputCls}>
+                  <option value="">— none —</option>
+                  <option value={TZ_SAME_AS_IST}>{TZ_SAME_AS_IST}</option>
+                  <optgroup label="Ahead of IST">
+                    {TZ_AHEAD_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                  </optgroup>
+                  <optgroup label="Behind IST">
+                    {TZ_BEHIND_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                  </optgroup>
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Billing type</label>
+                <select name="billing_type" className={inputCls}>
+                  <option value="">— none —</option>
+                  <option value="User-wise">User-wise</option>
+                  <option value="Store-wise">Store-wise</option>
+                </select>
+              </div>
             </div>
 
             {/* Weekly offs */}

@@ -2,9 +2,10 @@
 
 import { useState, useTransition, useMemo } from 'react'
 import Link from 'next/link'
-import { Plus, Trash2, Check, ArrowUpDown, Flag, CalendarClock, X, Pencil, ExternalLink, MessageSquareText } from 'lucide-react'
+import { Plus, Trash2, Check, ArrowUpDown, Flag, CalendarClock, X, Pencil, ExternalLink, MessageSquareText, Eye, EyeOff } from 'lucide-react'
 import { addPlannerTaskAction, updatePlannerTaskAction, togglePlannerTaskAction, deletePlannerTaskAction } from './actions'
 import { toggleNoteDeadlineDoneAction } from '../clients/[id]/actions'
+import { toggleTrialNoteDeadlineDoneAction } from '../trial/actions'
 import { formatDate, daysSince } from '@/lib/utils'
 import { resolveAccount, type ClientOption } from '@/lib/planner-utils'
 import type { PlannerTask, TaskPriority } from '@/lib/types'
@@ -20,7 +21,8 @@ const PRIORITY_COLOR: Record<TaskPriority, string> = {
 
 interface NoteDeadline {
   id: string
-  clientId: string
+  clientId: string | null
+  trialAccountId: string | null
   clientName: string
   content: string
   deadline: string
@@ -29,21 +31,30 @@ interface NoteDeadline {
 
 interface LatestUpdate {
   id: string
-  clientId: string
+  clientId: string | null
+  trialAccountId: string | null
   clientName: string
   content: string
   authorName: string
   createdAt: string
+  isPersonal: boolean
 }
 
 interface Props {
   initialTasks: PlannerTask[]
   clients: ClientOption[]
+  trials: ClientOption[]
   noteDeadlines: NoteDeadline[]
   latestUpdates: LatestUpdate[]
   teamSuggestions: string[]
   personSuggestions: string[]
   accountSuggestions: string[]
+}
+
+function entityLink(clientId: string | null, trialAccountId: string | null, noteId: string): string {
+  if (clientId) return `/clients/${clientId}#note-${noteId}`
+  if (trialAccountId) return `/trial/${trialAccountId}#note-${noteId}`
+  return '#'
 }
 
 const inputCls = 'text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white'
@@ -58,8 +69,9 @@ function relativeDay(dateStr: string): string {
 }
 
 export default function PlannerClient({
-  initialTasks, clients, noteDeadlines: initialNoteDeadlines, latestUpdates, teamSuggestions, personSuggestions, accountSuggestions,
+  initialTasks, clients, trials, noteDeadlines: initialNoteDeadlines, latestUpdates, teamSuggestions, personSuggestions, accountSuggestions,
 }: Props) {
+  const [teamOnly, setTeamOnly] = useState(false)
   const [tasks, setTasks] = useState(initialTasks)
   const [noteDeadlines, setNoteDeadlines] = useState(initialNoteDeadlines)
   const [sortMode, setSortMode] = useState<'manual' | 'deadline' | 'priority'>('manual')
@@ -95,18 +107,18 @@ export default function PlannerClient({
 
   function addTask() {
     if (!task.trim()) return
-    const { clientId, accountName } = resolveAccount(account, clients)
+    const { clientId, trialAccountId, accountName } = resolveAccount(account, clients, trials)
     const tempId = `temp-${Date.now()}`
     const optimistic: PlannerTask = {
       id: tempId,
       user_id: '', team: team.trim() || null, person: person.trim() || null,
-      client_id: clientId, account_name: accountName, task: task.trim(), priority, deadline: deadline || null,
+      client_id: clientId, trial_account_id: trialAccountId, account_name: accountName, task: task.trim(), priority, deadline: deadline || null,
       status: 'open', sort_order: 0, created_at: new Date().toISOString(),
     }
     setTasks((prev) => [optimistic, ...prev])
     setAddError(null)
     start(async () => {
-      const result = await addPlannerTaskAction({ team, person, clientId, accountName, task, priority, deadline: deadline || null })
+      const result = await addPlannerTaskAction({ team, person, clientId, trialAccountId, accountName, task, priority, deadline: deadline || null })
       if (result?.error) {
         setTasks((prev) => prev.filter((t) => t.id !== tempId))
         setAddError(result.error)
@@ -128,7 +140,10 @@ export default function PlannerClient({
 
   function toggleNoteDone(n: NoteDeadline) {
     setNoteDeadlines((prev) => prev.map((x) => (x.id === n.id ? { ...x, deadline_done: !x.deadline_done } : x)))
-    start(async () => { await toggleNoteDeadlineDoneAction(n.id, n.clientId, !n.deadline_done) })
+    start(async () => {
+      if (n.trialAccountId) await toggleTrialNoteDeadlineDoneAction(n.id, n.trialAccountId, !n.deadline_done)
+      else if (n.clientId) await toggleNoteDeadlineDoneAction(n.id, n.clientId, !n.deadline_done)
+    })
   }
 
   const openCount = tasks.filter((t) => t.status !== 'done').length
@@ -217,13 +232,14 @@ export default function PlannerClient({
                 key={t.id}
                 task={t}
                 clients={clients}
+                trials={trials}
                 editing={editingId === t.id}
                 onEdit={() => setEditingId(t.id)}
                 onCancelEdit={() => setEditingId(null)}
                 onSaved={(fields) => {
                   const previous = t
                   setTasks((prev) => prev.map((x) => (x.id === t.id
-                    ? { ...x, ...fields, client_id: fields.clientId ?? null, account_name: fields.accountName ?? null }
+                    ? { ...x, ...fields, client_id: fields.clientId ?? null, trial_account_id: fields.trialAccountId ?? null, account_name: fields.accountName ?? null }
                     : x)))
                   setAddError(null)
                   start(async () => {
@@ -248,20 +264,34 @@ export default function PlannerClient({
       {/* Where things stand — latest note per client, no deadline required */}
       {latestUpdates.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-              <MessageSquareText className="w-3.5 h-3.5 text-gray-400" />
-              Where things stand
-            </h3>
-            <p className="text-xs text-gray-400 mt-0.5">The last note logged on each account — so you don&apos;t have to remember.</p>
+          <div className="px-4 py-2.5 border-b border-gray-100 flex items-start justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                <MessageSquareText className="w-3.5 h-3.5 text-gray-400" />
+                Where things stand
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">The last note logged on each account — so you don&apos;t have to remember.</p>
+            </div>
+            <button
+              onClick={() => setTeamOnly((v) => !v)}
+              title={teamOnly ? 'Showing team notes only — safe to screen-share' : 'Showing your personal notes too'}
+              className={`flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full border flex-shrink-0 transition-colors ${
+                teamOnly ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              {teamOnly ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+              {teamOnly ? 'Team only' : 'Show all'}
+            </button>
           </div>
           <div className="divide-y divide-gray-50">
-            {latestUpdates.map((u) => (
+            {latestUpdates.filter((u) => !teamOnly || !u.isPersonal).map((u) => (
               <div key={u.id} className="px-4 py-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <Link href={`/clients/${u.clientId}#note-${u.id}`} className="text-sm font-semibold text-blue-600 hover:text-blue-700">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <Link href={entityLink(u.clientId, u.trialAccountId, u.id)} className={`text-sm font-semibold hover:underline ${u.trialAccountId ? 'text-teal-700' : 'text-blue-600'}`}>
                     {u.clientName}
                   </Link>
+                  {u.trialAccountId && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-600 border border-teal-200">Trial</span>}
+                  {u.isPersonal && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Personal</span>}
                   <span className="text-xs text-gray-400">{relativeDay(u.createdAt)} · {u.authorName}</span>
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed">{u.content}</p>
@@ -291,7 +321,7 @@ export default function PlannerClient({
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm ${n.deadline_done ? 'text-gray-400 line-through' : 'text-gray-700'}`}>{n.content}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <Link href={`/clients/${n.clientId}#note-${n.id}`} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700">
+                      <Link href={entityLink(n.clientId, n.trialAccountId, n.id)} className={`flex items-center gap-1 text-xs hover:underline ${n.trialAccountId ? 'text-teal-700' : 'text-blue-600'}`}>
                         {n.clientName} <ExternalLink className="w-2.5 h-2.5" />
                       </Link>
                       <span className={`text-xs ${overdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
@@ -312,22 +342,24 @@ export default function PlannerClient({
 }
 
 function TaskRow({
-  task, clients, editing, onEdit, onCancelEdit, onSaved, onToggleDone, onDelete,
+  task, clients, trials, editing, onEdit, onCancelEdit, onSaved, onToggleDone, onDelete,
 }: {
   task: PlannerTask
   clients: ClientOption[]
+  trials: ClientOption[]
   editing: boolean
   onEdit: () => void
   onCancelEdit: () => void
-  onSaved: (fields: { team?: string | null; person?: string | null; clientId?: string | null; accountName?: string | null; task?: string; priority?: TaskPriority; deadline?: string | null }) => void
+  onSaved: (fields: { team?: string | null; person?: string | null; clientId?: string | null; trialAccountId?: string | null; accountName?: string | null; task?: string; priority?: TaskPriority; deadline?: string | null }) => void
   onToggleDone: () => void
   onDelete: () => void
 }) {
   const clientName = clients.find((c) => c.id === task.client_id)?.name
+  const trialName = trials.find((t) => t.id === task.trial_account_id)?.name
 
   const [team, setTeam] = useState(task.team ?? '')
   const [person, setPerson] = useState(task.person ?? '')
-  const [account, setAccount] = useState(clientName ?? task.account_name ?? '')
+  const [account, setAccount] = useState(clientName ?? trialName ?? task.account_name ?? '')
   const [priority, setPriority] = useState<TaskPriority>(task.priority)
   const [deadline, setDeadline] = useState(task.deadline ?? '')
   const [text, setText] = useState(task.task)
@@ -352,8 +384,8 @@ function TaskRow({
         <div className="flex gap-2">
           <button
             onClick={() => {
-              const { clientId, accountName } = resolveAccount(account, clients)
-              onSaved({ team, person, clientId, accountName, task: text, priority, deadline: deadline || null })
+              const { clientId, trialAccountId, accountName } = resolveAccount(account, clients, trials)
+              onSaved({ team, person, clientId, trialAccountId, accountName, task: text, priority, deadline: deadline || null })
             }}
             className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700"
           >
@@ -382,6 +414,8 @@ function TaskRow({
           {task.person && <span className="text-xs text-gray-400">· {task.person}</span>}
           {clientName ? (
             <Link href={`/clients/${task.client_id}`} className="text-xs text-blue-600 hover:text-blue-700">· {clientName}</Link>
+          ) : trialName ? (
+            <Link href={`/trial/${task.trial_account_id}`} className="text-xs text-teal-700 hover:text-teal-800">· {trialName} (Trial)</Link>
           ) : task.account_name ? (
             <span className="text-xs text-gray-400">· {task.account_name}</span>
           ) : null}

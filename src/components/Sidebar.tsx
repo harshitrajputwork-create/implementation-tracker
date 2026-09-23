@@ -12,7 +12,7 @@ import {
   LayoutDashboard, Plus, LogOut, ClipboardList,
   BookOpen, Sparkles, ChevronDown,
   PanelLeftClose, PanelLeftOpen, Settings, ChevronRight, NotebookPen,
-  Menu, X,
+  Menu, X, FlaskConical,
 } from 'lucide-react'
 
 interface SidebarClient { id: string; name: string; status: string }
@@ -53,6 +53,8 @@ export default function Sidebar({ user, clients }: SidebarProps) {
   }, [pathname])
 
   const expanded = pinned || hovered || mobileOpen
+  const isTrial = pathname.startsWith('/trial')
+  const accentBg = isTrial ? 'bg-teal-600' : 'bg-blue-600'
 
   function togglePin() {
     const next = !pinned
@@ -79,18 +81,18 @@ export default function Sidebar({ user, clients }: SidebarProps) {
         className={cn(
           'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors relative',
           expanded ? 'px-3 py-2.5' : 'px-2 py-2.5 justify-center',
-          isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800',
+          isActive ? accentBg + ' text-white' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800',
         )}
       >
         <Icon className="w-4 h-4 flex-shrink-0" />
         {expanded && <span className="whitespace-nowrap overflow-hidden flex-1">{label}</span>}
         {badge !== undefined && badge > 0 && expanded && (
-          <span className="text-xs bg-blue-600 text-white rounded-full px-1.5 py-0.5 font-semibold leading-none">
+          <span className={cn('text-xs text-white rounded-full px-1.5 py-0.5 font-semibold leading-none', accentBg)}>
             {badge}
           </span>
         )}
         {badge !== undefined && badge > 0 && !expanded && (
-          <span className="absolute top-1 right-1 w-2 h-2 bg-blue-600 rounded-full" />
+          <span className={cn('absolute top-1 right-1 w-2 h-2 rounded-full', accentBg)} />
         )}
       </Link>
     )
@@ -106,10 +108,10 @@ export default function Sidebar({ user, clients }: SidebarProps) {
         >
           <Menu className="w-5 h-5" />
         </button>
-        <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-          <ClipboardList className="w-3.5 h-3.5 text-white" />
+        <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0', accentBg)}>
+          {isTrial ? <FlaskConical className="w-3.5 h-3.5 text-white" /> : <ClipboardList className="w-3.5 h-3.5 text-white" />}
         </div>
-        <p className="text-white font-semibold text-sm">Impl. Tracker</p>
+        <p className="text-white font-semibold text-sm">{isTrial ? 'Free Trial' : 'Impl. Tracker'}</p>
       </div>
 
       {/* Backdrop — mobile only, tap to close */}
@@ -133,12 +135,12 @@ export default function Sidebar({ user, clients }: SidebarProps) {
       {/* Brand */}
       <div className={cn('py-5 border-b border-slate-800 flex-shrink-0', expanded ? 'px-5' : 'px-[10px]')}>
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <ClipboardList className="w-4 h-4 text-white" />
+          <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0', accentBg)}>
+            {isTrial ? <FlaskConical className="w-4 h-4 text-white" /> : <ClipboardList className="w-4 h-4 text-white" />}
           </div>
           {expanded && (
             <div className="min-w-0 overflow-hidden flex-1">
-              <p className="text-white font-semibold text-sm leading-tight whitespace-nowrap">Impl. Tracker</p>
+              <p className="text-white font-semibold text-sm leading-tight whitespace-nowrap">{isTrial ? 'Free Trial' : 'Impl. Tracker'}</p>
               <p className="text-slate-400 text-xs">Taqtics</p>
             </div>
           )}
@@ -151,20 +153,58 @@ export default function Sidebar({ user, clients }: SidebarProps) {
             </button>
           )}
         </div>
+
+        {/* Implementation / Trial toggle */}
+        {expanded ? (
+          <div className="flex items-center gap-0.5 bg-slate-800 rounded-lg p-0.5 mt-3">
+            <Link
+              href="/dashboard"
+              className={cn(
+                'flex-1 text-center text-xs font-medium px-2 py-1.5 rounded-md transition-colors',
+                !isTrial ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200',
+              )}
+            >
+              Implementation
+            </Link>
+            <Link
+              href="/trial"
+              className={cn(
+                'flex-1 text-center text-xs font-medium px-2 py-1.5 rounded-md transition-colors',
+                isTrial ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-slate-200',
+              )}
+            >
+              Trial
+            </Link>
+          </div>
+        ) : (
+          <Link
+            href={isTrial ? '/dashboard' : '/trial'}
+            title={isTrial ? 'Switch to Implementation' : 'Switch to Free Trial'}
+            className="flex items-center justify-center mt-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
+          >
+            {isTrial ? <ClipboardList className="w-4 h-4" /> : <FlaskConical className="w-4 h-4" />}
+          </Link>
+        )}
       </div>
 
       {/* Main nav + client list — scrollable */}
       <nav className={cn('flex-1 py-3 flex flex-col overflow-hidden', expanded ? 'px-3' : 'px-2')}>
         {/* Top links */}
         <div className="space-y-0.5 flex-shrink-0">
-          <NavLink href="/dashboard" label="Dashboard" icon={LayoutDashboard} />
-          {user.role !== 'visitor' && (
-            <NavLink href="/clients/new" label="New Client" icon={Plus} />
+          {isTrial ? (
+            <NavLink href="/trial" label="Trial Dashboard" icon={FlaskConical} />
+          ) : (
+            <>
+              <NavLink href="/dashboard" label="Dashboard" icon={LayoutDashboard} />
+              {user.role !== 'visitor' && (
+                <NavLink href="/clients/new" label="New Client" icon={Plus} />
+              )}
+            </>
           )}
         </div>
 
         {/* Client list */}
-        {clients.length > 0 && (
+        {!isTrial && clients.length > 0 && (
           <div className="mt-3 flex-1 min-h-0 flex flex-col">
             {expanded ? (
               <>
@@ -189,7 +229,7 @@ export default function Sidebar({ user, clients }: SidebarProps) {
                           className={cn(
                             'flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
                             isActive
-                              ? 'bg-blue-600 text-white'
+                              ? accentBg + ' text-white'
                               : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800',
                           )}
                         >
@@ -248,7 +288,7 @@ export default function Sidebar({ user, clients }: SidebarProps) {
                 className={cn(
                   'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors',
                   expanded ? 'px-3 py-2' : 'px-2 py-2 justify-center',
-                  isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800',
+                  isActive ? accentBg + ' text-white' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800',
                 )}
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
@@ -283,7 +323,7 @@ export default function Sidebar({ user, clients }: SidebarProps) {
         {expanded ? (
           <>
             <div className="flex items-center gap-3 px-3 py-2 mb-1">
-              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+              <div className={cn('w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0', accentBg)}>
                 {getInitials(user.full_name ?? user.email)}
               </div>
               <div className="min-w-0 overflow-hidden flex-1">
@@ -314,7 +354,7 @@ export default function Sidebar({ user, clients }: SidebarProps) {
         ) : (
           <div className="flex flex-col items-center gap-1">
             <div
-              className="relative w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold"
+              className={cn('relative w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold', accentBg)}
               title={user.full_name ?? user.email}
             >
               {getInitials(user.full_name ?? user.email)}

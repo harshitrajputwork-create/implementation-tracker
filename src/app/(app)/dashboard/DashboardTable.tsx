@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { Client, ClientStatus } from '@/lib/types'
 import StatusBadge from '@/components/StatusBadge'
 import { formatDate, daysSince } from '@/lib/utils'
-import { ChevronDown, Clock, Filter, X } from 'lucide-react'
+import { ChevronDown, Clock, Filter, X, ArrowUpRight } from 'lucide-react'
 import { TicketSizeBadge } from '../clients/[id]/ClientMetaEditor'
 import QuickMarkDone from './QuickMarkDone'
 
@@ -240,6 +240,7 @@ export default function DashboardTable({ clients, handedOverClients = [], isAdmi
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">Days in</th>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">Last activity</th>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">Status</th>
+                <th className="px-4 py-3.5" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -274,8 +275,11 @@ export default function DashboardTable({ clients, handedOverClients = [], isAdmi
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-600">{client.country ?? '—'}</td>
                     <td className="px-4 py-4">
-                      <TicketSizeBadge size={client.ticket_size} />
-                      {!client.ticket_size && <span className="text-sm text-gray-400">—</span>}
+                      <div className="flex items-center gap-1.5">
+                        <TicketSizeBadge size={client.ticket_size} />
+                        {!client.ticket_size && <span className="text-sm text-gray-400">—</span>}
+                      </div>
+                      {client.company_size && <p className="text-xs text-gray-400 mt-0.5">{client.company_size}</p>}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-600">{client.sales_spoc ?? '—'}</td>
                     <td className="px-4 py-4 text-sm text-gray-600">
@@ -308,6 +312,20 @@ export default function DashboardTable({ clients, handedOverClients = [], isAdmi
                         <StatusBadge status={client._effectiveStatus} size="sm" overdueDays={client._overdueDays} />
                         {client._isAuto && <span className="text-xs text-gray-400">auto</span>}
                       </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      {client.account_url && (
+                        <a
+                          href={client.account_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          title="Open account"
+                          className="flex items-center justify-center w-7 h-7 text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                          <ArrowUpRight className="w-4 h-4" />
+                        </a>
+                      )}
                     </td>
                   </tr>
                 )
@@ -365,6 +383,7 @@ export default function DashboardTable({ clients, handedOverClients = [], isAdmi
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">Implementation Owner</th>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">KAM</th>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3.5">Handed over on</th>
+                <th className="px-4 py-3.5" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -389,6 +408,20 @@ export default function DashboardTable({ clients, handedOverClients = [], isAdmi
                       </span>
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-600">{formatDate(client.handover_date)}</td>
+                    <td className="px-4 py-4">
+                      {client.account_url && (
+                        <a
+                          href={client.account_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          title="Open account"
+                          className="flex items-center justify-center w-7 h-7 text-gray-300 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors"
+                        >
+                          <ArrowUpRight className="w-4 h-4" />
+                        </a>
+                      )}
+                    </td>
                   </tr>
                 )
               })}

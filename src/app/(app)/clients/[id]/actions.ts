@@ -217,6 +217,7 @@ export async function updateClientMetaAction(
     account_url?: string | null
     weekly_offs?: string | null
     tz_offset?: string | null
+    billing_type?: string | null
   },
 ) {
   const { supabase, user } = await getSessionUser()
