@@ -14,11 +14,12 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
   const { supabase, user } = await getSessionUser()
   if (!user) redirect('/login')
 
-  const [{ data: trial }, { data: notesRows }, { data: opts }, { data: members }] = await Promise.all([
+  const [{ data: trial }, { data: notesRows }, { data: opts }, { data: members }, { data: me }] = await Promise.all([
     supabase.from('trial_accounts').select('*, owner:profiles!owner_id(id, full_name, email, role)').eq('id', id).single(),
     supabase.from('client_notes').select('*').eq('trial_account_id', id).order('created_at', { ascending: false }),
     supabase.from('config_options').select('*').order('sort_order'),
     supabase.from('profiles').select('id, full_name, email, role').in('role', ['admin', 'member']).order('full_name'),
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
   ])
 
   if (!trial) notFound()
@@ -41,6 +42,7 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
         currentUserId={user.id}
         configOptions={configOptions}
         members={(members ?? []) as Profile[]}
+        isAdmin={me?.role === 'admin'}
       />
     </div>
   )

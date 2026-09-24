@@ -7,8 +7,9 @@ import {
   ExternalLink, CalendarClock, Trash2, Send, ArrowRight, Pencil, Check, X,
 } from 'lucide-react'
 import MentionTextarea from '@/components/MentionTextarea'
-import { updateTrialAccountAction, addTrialNoteAction, deleteTrialNoteAction, toggleTrialNoteDeadlineDoneAction } from '../actions'
+import { updateTrialAccountAction, addTrialNoteAction, deleteTrialNoteAction, toggleTrialNoteDeadlineDoneAction, deleteTrialAccountAction } from '../actions'
 import { formatDate, daysSince } from '@/lib/utils'
+import { TICKET_SIZES, TICKET_SIZE_COLOR } from '@/lib/ticket-size'
 import type { TrialAccount, TrialStatus, ClientNoteEntry, ConfigOption, Profile } from '@/lib/types'
 
 const STATUSES: TrialStatus[] = ['Active', 'Stalled', 'Converted', 'Lost']
@@ -77,18 +78,23 @@ function NoteRow({ note, currentUserId, onDelete, onToggleDeadline }: {
 }
 
 export default function TrialDetailClient({
-  trial, notes: initialNotes, currentUserId, configOptions, members,
+  trial, notes: initialNotes, currentUserId, configOptions, members, isAdmin,
 }: {
   trial: TrialAccount
   notes: ClientNoteEntry[]
   currentUserId: string
   configOptions: ConfigOption[]
   members: Profile[]
+  isAdmin: boolean
 }) {
   const router = useRouter()
   const [notes, setNotes] = useState(initialNotes)
   const [isPending, start] = useTransition()
   const [editing, setEditing] = useState(false)
+  const [showDelete, setShowDelete] = useState(false)
+  const [confirmText, setConfirmText] = useState('')
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [deletePending, startDelete] = useTransition()
 
   const [name, setName] = useState(trial.name)
   const [trialUrl, setTrialUrl] = useState(trial.trial_url ?? '')
@@ -140,6 +146,15 @@ export default function TrialDetailClient({
     start(async () => { await updateTrialAccountAction(trial.id, { status }); router.refresh() })
   }
 
+  function handleDelete() {
+    if (confirmText !== trial.name) return
+    setDeleteError(null)
+    startDelete(async () => {
+      const result = await deleteTrialAccountAction(trial.id)
+      if (result?.error) setDeleteError(result.error)
+    })
+  }
+
   function postNote() {
     if (!content.trim()) return
     start(async () => {
@@ -176,7 +191,6 @@ export default function TrialDetailClient({
                 <option value="">Country — none</option>
                 {countryOptions.map((o) => <option key={o.id} value={o.label}>{o.label}</option>)}
               </select>
-              <input value={companySize} onChange={(e) => setCompanySize(e.target.value)} placeholder="Size of account (e.g. 10 stores)" className={`${inputCls} w-full`} />
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Trial start</label>
                 <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={`${inputCls} w-full`} />
@@ -184,6 +198,23 @@ export default function TrialDetailClient({
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Target end (flexible)</label>
                 <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={`${inputCls} w-full`} />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 block mb-1.5">Size of account</label>
+              <div className="flex gap-2 flex-wrap">
+                {TICKET_SIZES.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setCompanySize(companySize === s ? '' : s)}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
+                      companySize === s ? TICKET_SIZE_COLOR[s] : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
               </div>
             </div>
             {moduleOptions.length > 0 && (
@@ -214,6 +245,54 @@ export default function TrialDetailClient({
               </button>
               <button onClick={() => setEditing(false)} className="px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100 rounded-lg">Cancel</button>
             </div>
+
+            {isAdmin && (
+              <div className="border border-red-200 rounded-xl p-4 bg-red-50/50">
+                <p className="text-xs font-semibold text-red-700 mb-2">Danger zone</p>
+                {!showDelete ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowDelete(true)}
+                    className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 font-medium"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete this trial account
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-xs text-red-700">
+                      This permanently deletes <strong>{trial.name}</strong> and its notes. This cannot be undone.
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Type <strong>{trial.name}</strong> to confirm.
+                    </p>
+                    <input
+                      value={confirmText}
+                      onChange={(e) => setConfirmText(e.target.value)}
+                      placeholder={trial.name}
+                      className={`${inputCls} w-full border-red-200 focus:ring-red-400`}
+                    />
+                    {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={confirmText !== trial.name || deletePending}
+                        className="px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 disabled:opacity-40 transition-colors"
+                      >
+                        {deletePending ? 'Deleting…' : 'Permanently delete'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowDelete(false); setConfirmText(''); setDeleteError(null) }}
+                        className="text-xs text-gray-400 hover:text-gray-600 px-2"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -234,7 +313,14 @@ export default function TrialDetailClient({
             <div className="flex items-center gap-2 text-sm text-gray-500 flex-wrap">
               {trial.country && <span>{trial.country}</span>}
               {trial.sales_spoc && <><span className="text-gray-300">·</span><span>Sales: {trial.sales_spoc}</span></>}
-              {trial.company_size && <><span className="text-gray-300">·</span><span>{trial.company_size}</span></>}
+              {trial.company_size && (
+                <>
+                  <span className="text-gray-300">·</span>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${TICKET_SIZE_COLOR[trial.company_size] ?? ''}`}>
+                    {trial.company_size}
+                  </span>
+                </>
+              )}
               {days != null && <><span className="text-gray-300">·</span><span>{days}d in trial</span></>}
               {trial.trial_end_date && <><span className="text-gray-300">·</span><span>Target: {formatDate(trial.trial_end_date)}</span></>}
             </div>

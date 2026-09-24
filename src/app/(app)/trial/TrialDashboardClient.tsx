@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, FlaskConical, ExternalLink } from 'lucide-react'
 import { addTrialAccountAction } from './actions'
 import { daysSince } from '@/lib/utils'
+import { TICKET_SIZES, TICKET_SIZE_COLOR } from '@/lib/ticket-size'
 import type { TrialAccount, TrialStatus, ConfigOption, Profile } from '@/lib/types'
 
 const STATUSES: TrialStatus[] = ['Active', 'Stalled', 'Converted', 'Lost']
@@ -35,6 +36,7 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
   const [salesSpoc, setSalesSpoc] = useState('')
   const [country, setCountry] = useState('')
   const [companySize, setCompanySize] = useState('')
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
 
   const spocOptions    = configOptions.filter((o) => o.config_key === 'sales_spoc')
   const countryOptions = configOptions.filter((o) => o.config_key === 'country')
@@ -55,12 +57,12 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
     start(async () => {
       const result = await addTrialAccountAction({
         name, trialUrl, salesSpoc, country, companySize,
-        trialStartDate: new Date().toISOString().split('T')[0],
+        trialStartDate: startDate || new Date().toISOString().split('T')[0],
       })
       if (result.error) { setError(result.error); return }
       if (result.id) router.push(`/trial/${result.id}`)
     })
-    setName(''); setTrialUrl(''); setSalesSpoc(''); setCountry(''); setCompanySize('')
+    setName(''); setTrialUrl(''); setSalesSpoc(''); setCountry(''); setCompanySize(''); setStartDate(new Date().toISOString().split('T')[0])
   }
 
   return (
@@ -78,7 +80,7 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
       {/* Quick add */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Log a new trial</p>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-2">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Account name" className={inputCls} />
           <input value={trialUrl} onChange={(e) => setTrialUrl(e.target.value)} placeholder="Trial URL" className={inputCls} />
           <select value={salesSpoc} onChange={(e) => setSalesSpoc(e.target.value)} className={inputCls}>
@@ -89,7 +91,14 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
             <option value="">Country</option>
             {countryOptions.map((o) => <option key={o.id} value={o.label}>{o.label}</option>)}
           </select>
-          <input value={companySize} onChange={(e) => setCompanySize(e.target.value)} placeholder="Size of account" className={inputCls} />
+          <select value={companySize} onChange={(e) => setCompanySize(e.target.value)} className={inputCls}>
+            <option value="">Size of account</option>
+            {TICKET_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <div>
+            <label className="text-[10px] text-gray-400 block mb-0.5">Trial start date</label>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={`${inputCls} w-full`} />
+          </div>
         </div>
         <div className="flex justify-end">
           <button
@@ -134,6 +143,7 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Account</th>
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">Country</th>
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">Sales SPOC</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">Size</th>
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">In trial</th>
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">Status</th>
                   <th className="px-4 py-3" />
@@ -155,6 +165,13 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-600">{t.country ?? '—'}</td>
                       <td className="px-4 py-4 text-sm text-gray-600">{t.sales_spoc ?? '—'}</td>
+                      <td className="px-4 py-4">
+                        {t.company_size ? (
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${TICKET_SIZE_COLOR[t.company_size] ?? ''}`}>
+                            {t.company_size}
+                          </span>
+                        ) : <span className="text-sm text-gray-400">—</span>}
+                      </td>
                       <td className="px-4 py-4 text-sm text-gray-600">{days != null ? `${days}d` : '—'}</td>
                       <td className="px-4 py-4">
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLOR[t.status]}`}>{t.status}</span>
