@@ -276,7 +276,10 @@ export default function TrialDetailClient({
           <div className="space-y-3">
             <input value={name} onChange={(e) => setName(e.target.value)} className={`${inputCls} w-full text-lg font-bold`} />
             <div className="grid grid-cols-2 gap-3">
-              <input value={trialUrl} onChange={(e) => setTrialUrl(e.target.value)} placeholder="Trial URL" className={`${inputCls} w-full`} />
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Trial URL</label>
+                <input value={trialUrl} onChange={(e) => setTrialUrl(e.target.value)} placeholder="https://account.taqtics.co/" className={`${inputCls} w-full`} />
+              </div>
               <select value={salesSpoc} onChange={(e) => setSalesSpoc(e.target.value)} className={inputCls}>
                 <option value="">Sales SPOC — none</option>
                 {spocOptions.map((o) => <option key={o.id} value={o.label}>{o.label}</option>)}
