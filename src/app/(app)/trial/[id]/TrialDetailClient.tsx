@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import MentionTextarea from '@/components/MentionTextarea'
 import { updateTrialAccountAction, addTrialNoteAction, deleteTrialNoteAction, toggleTrialNoteDeadlineDoneAction, deleteTrialAccountAction } from '../actions'
-import { formatDate, daysSince, subdomainOf, downloadCsv } from '@/lib/utils'
+import { formatDate, daysSince, subdomainOf, downloadCsv, defaultDemoPassword } from '@/lib/utils'
 import { TICKET_SIZES, TICKET_SIZE_COLOR } from '@/lib/ticket-size'
 import type { TrialAccount, TrialStatus, ClientNoteEntry, ConfigOption, Profile, DemoCredential } from '@/lib/types'
 
@@ -127,6 +127,7 @@ export default function TrialDetailClient({
   const countryOptions = configOptions.filter((o) => o.config_key === 'country')
   const moduleOptions  = configOptions.filter((o) => o.config_key === 'module')
   const days = daysSince(trial.trial_start_date)
+  const suggestedPassword = defaultDemoPassword(trial.trial_url)
 
   function toggleModule(label: string) {
     setModules((prev) => (prev.includes(label) ? prev.filter((m) => m !== label) : [...prev, label]))
@@ -175,7 +176,14 @@ export default function TrialDetailClient({
   }
 
   function addCredentialRow() {
-    setCredentials((prev) => [...prev, { id: '', password: '', extra: {} }])
+    setCredentials((prev) => [...prev, { id: '', password: suggestedPassword, extra: {} }])
+  }
+
+  function fillEmptyPasswords() {
+    if (!suggestedPassword) return
+    const next = credentials.map((c) => (c.password.trim() ? c : { ...c, password: suggestedPassword }))
+    setCredentials(next)
+    saveCredentials(next)
   }
 
   function updateCredentialField(index: number, field: 'id' | 'password', value: string) {
@@ -200,8 +208,8 @@ export default function TrialDetailClient({
     if (lines.length <= 1) return
     e.preventDefault()
     const next = [...credentials]
-    next[index] = { ...next[index], id: lines[0] }
-    const newRows: DemoCredential[] = lines.slice(1).map((line) => ({ id: line, password: '', extra: {} }))
+    next[index] = { ...next[index], id: lines[0], password: next[index].password || suggestedPassword }
+    const newRows: DemoCredential[] = lines.slice(1).map((line) => ({ id: line, password: suggestedPassword, extra: {} }))
     next.splice(index + 1, 0, ...newRows)
     setCredentials(next)
     saveCredentials(next)
@@ -455,6 +463,7 @@ export default function TrialDetailClient({
         <p className="text-xs text-gray-400 mb-3">
           Dummy accounts + one-time temp passwords to hand off to the client — kept separate from your use-case notes above.
           Paste several IDs at once into an ID field (one per line) to add them all in one go.
+          {suggestedPassword && <> New rows default to <span className="font-mono text-gray-600">{suggestedPassword}</span>.</>}
         </p>
 
         {credentials.length > 0 && (
@@ -520,6 +529,14 @@ export default function TrialDetailClient({
           >
             <Plus className="w-3.5 h-3.5" /> Add login
           </button>
+          {suggestedPassword && credentials.some((c) => !c.password.trim()) && (
+            <button
+              onClick={fillEmptyPasswords}
+              className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 font-medium"
+            >
+              <KeyRound className="w-3.5 h-3.5" /> Fill empty passwords
+            </button>
+          )}
           {addingColumn ? (
             <div className="flex items-center gap-1.5">
               <input

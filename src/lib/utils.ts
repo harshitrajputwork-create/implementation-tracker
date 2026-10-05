@@ -60,6 +60,14 @@ export function subdomainOf(url: string | null | undefined): string | null {
   }
 }
 
+// Standard demo-login temp password convention: capitalized subdomain +
+// "@123789" — e.g. subdomain "impl3" -> "Impl3@123789".
+export function defaultDemoPassword(trialUrl: string | null | undefined): string {
+  const sub = subdomainOf(trialUrl)
+  if (!sub) return ''
+  return `${sub.charAt(0).toUpperCase()}${sub.slice(1)}@123789`
+}
+
 function csvCell(v: string): string {
   return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
 }
