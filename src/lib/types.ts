@@ -52,9 +52,11 @@ export interface Client {
 export type TrialStatus = 'Active' | 'Stalled' | 'Converted' | 'Lost'
 
 export interface DemoCredential {
-  label: string
-  email: string
+  id: string
   password: string
+  // Values for any custom columns added beyond ID + password, keyed by
+  // column name — e.g. {"Store": "Angadi HQ"}.
+  extra?: Record<string, string>
 }
 
 export interface TrialAccount {
@@ -67,6 +69,7 @@ export interface TrialAccount {
   modules: string[] | null
   use_case_notes: string | null
   demo_credentials: DemoCredential[] | null
+  demo_credential_columns: string[] | null
   status: TrialStatus
   trial_start_date: string | null
   trial_end_date: string | null

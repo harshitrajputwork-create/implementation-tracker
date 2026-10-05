@@ -118,7 +118,10 @@ export default function TrialDetailClient({
   const [spokeWith, setSpokeWith] = useState('')
 
   const [credentials, setCredentials] = useState<DemoCredential[]>(trial.demo_credentials ?? [])
+  const [columns, setColumns] = useState<string[]>(trial.demo_credential_columns ?? [])
   const [savingCredentials, setSavingCredentials] = useState(false)
+  const [addingColumn, setAddingColumn] = useState(false)
+  const [newColumnName, setNewColumnName] = useState('')
 
   const spocOptions    = configOptions.filter((o) => o.config_key === 'sales_spoc')
   const countryOptions = configOptions.filter((o) => o.config_key === 'country')
@@ -172,11 +175,15 @@ export default function TrialDetailClient({
   }
 
   function addCredentialRow() {
-    setCredentials((prev) => [...prev, { label: '', email: '', password: '' }])
+    setCredentials((prev) => [...prev, { id: '', password: '', extra: {} }])
   }
 
-  function updateCredentialRow(index: number, field: keyof DemoCredential, value: string) {
+  function updateCredentialField(index: number, field: 'id' | 'password', value: string) {
     setCredentials((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)))
+  }
+
+  function updateCredentialExtra(index: number, column: string, value: string) {
+    setCredentials((prev) => prev.map((c, i) => (i === index ? { ...c, extra: { ...c.extra, [column]: value } } : c)))
   }
 
   function removeCredentialRow(index: number) {
@@ -185,20 +192,61 @@ export default function TrialDetailClient({
     saveCredentials(next)
   }
 
-  function saveCredentials(next: DemoCredential[] = credentials) {
+  // Pasting several IDs at once (e.g. "employee1@x.com\nmanager1@x.com\nhq1@x.com")
+  // fans them out into one row each, instead of overwriting a single field.
+  function handleIdPaste(e: React.ClipboardEvent<HTMLInputElement>, index: number) {
+    const text = e.clipboardData.getData('text')
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+    if (lines.length <= 1) return
+    e.preventDefault()
+    const next = [...credentials]
+    next[index] = { ...next[index], id: lines[0] }
+    const newRows: DemoCredential[] = lines.slice(1).map((line) => ({ id: line, password: '', extra: {} }))
+    next.splice(index + 1, 0, ...newRows)
+    setCredentials(next)
+    saveCredentials(next)
+  }
+
+  function saveCredentials(next: DemoCredential[] = credentials, cols: string[] = columns) {
     setSavingCredentials(true)
     start(async () => {
-      await updateTrialAccountAction(trial.id, { demoCredentials: next.filter((c) => c.email.trim() || c.password.trim()) })
+      await updateTrialAccountAction(trial.id, {
+        demoCredentials: next.filter((c) => c.id.trim() || c.password.trim()),
+        demoCredentialColumns: cols,
+      })
       setSavingCredentials(false)
       router.refresh()
     })
   }
 
+  function addColumn() {
+    const name = newColumnName.trim()
+    setAddingColumn(false)
+    setNewColumnName('')
+    if (!name || columns.includes(name)) return
+    const next = [...columns, name]
+    setColumns(next)
+    saveCredentials(credentials, next)
+  }
+
+  function removeColumn(name: string) {
+    const nextCols = columns.filter((c) => c !== name)
+    const nextCreds = credentials.map((c) => {
+      if (!c.extra || !(name in c.extra)) return c
+      const extra = { ...c.extra }
+      delete extra[name]
+      return { ...c, extra }
+    })
+    setColumns(nextCols)
+    setCredentials(nextCreds)
+    saveCredentials(nextCreds, nextCols)
+  }
+
   function exportCredentialsCsv() {
     downloadCsv(
       `${trial.name.replace(/[^a-z0-9]+/gi, '-')}-demo-logins.csv`,
-      ['Label', 'Email', 'Password'],
-      credentials.filter((c) => c.email.trim()).map((c) => [c.label, c.email, c.password]),
+      ['ID', 'One-time temporary password', ...columns],
+      credentials.filter((c) => c.id.trim()).map((c) => [c.id, c.password, ...columns.map((col) => c.extra?.[col] ?? '')]),
     )
   }
 
@@ -404,33 +452,59 @@ export default function TrialDetailClient({
             </button>
           )}
         </div>
-        <p className="text-xs text-gray-400 mb-3">Dummy accounts + one-time temp passwords to hand off to the client — kept separate from your use-case notes above.</p>
+        <p className="text-xs text-gray-400 mb-3">
+          Dummy accounts + one-time temp passwords to hand off to the client — kept separate from your use-case notes above.
+          Paste several IDs at once into an ID field (one per line) to add them all in one go.
+        </p>
 
         {credentials.length > 0 && (
-          <div className="space-y-2 mb-3">
+          <div className="space-y-1.5 mb-3 overflow-x-auto">
+            <div
+              className="grid gap-2 items-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide min-w-max"
+              style={{ gridTemplateColumns: `1.4fr 1.2fr ${columns.map(() => '1fr').join(' ')} auto` }}
+            >
+              <span>ID</span>
+              <span>One-time temp password</span>
+              {columns.map((col) => (
+                <span key={col} className="flex items-center gap-1 normal-case">
+                  {col}
+                  <button onClick={() => removeColumn(col)} title={`Remove column "${col}"`} className="text-gray-300 hover:text-red-500">
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </span>
+              ))}
+              <span />
+            </div>
             {credentials.map((c, i) => (
-              <div key={i} className="grid grid-cols-[1fr_1.5fr_1fr_auto] gap-2 items-center">
+              <div
+                key={i}
+                className="grid gap-2 items-center min-w-max"
+                style={{ gridTemplateColumns: `1.4fr 1.2fr ${columns.map(() => '1fr').join(' ')} auto` }}
+              >
                 <input
-                  value={c.label}
-                  onChange={(e) => updateCredentialRow(i, 'label', e.target.value)}
-                  onBlur={() => saveCredentials()}
-                  placeholder="Role (e.g. Manager)"
-                  className={inputCls}
-                />
-                <input
-                  value={c.email}
-                  onChange={(e) => updateCredentialRow(i, 'email', e.target.value)}
+                  value={c.id}
+                  onChange={(e) => updateCredentialField(i, 'id', e.target.value)}
+                  onPaste={(e) => handleIdPaste(e, i)}
                   onBlur={() => saveCredentials()}
                   placeholder="employee1@angadi.com"
                   className={inputCls}
                 />
                 <input
                   value={c.password}
-                  onChange={(e) => updateCredentialRow(i, 'password', e.target.value)}
+                  onChange={(e) => updateCredentialField(i, 'password', e.target.value)}
                   onBlur={() => saveCredentials()}
-                  placeholder="Temp password"
+                  placeholder="One-time temp password"
                   className={inputCls}
                 />
+                {columns.map((col) => (
+                  <input
+                    key={col}
+                    value={c.extra?.[col] ?? ''}
+                    onChange={(e) => updateCredentialExtra(i, col, e.target.value)}
+                    onBlur={() => saveCredentials()}
+                    className={inputCls}
+                  />
+                ))}
                 <button onClick={() => removeCredentialRow(i)} title="Remove" className="text-gray-300 hover:text-red-500 p-1">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -439,12 +513,38 @@ export default function TrialDetailClient({
           </div>
         )}
 
-        <button
-          onClick={addCredentialRow}
-          className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 font-medium"
-        >
-          <Plus className="w-3.5 h-3.5" /> Add login
-        </button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={addCredentialRow}
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 font-medium"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add login
+          </button>
+          {addingColumn ? (
+            <div className="flex items-center gap-1.5">
+              <input
+                autoFocus
+                value={newColumnName}
+                onChange={(e) => setNewColumnName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') addColumn()
+                  if (e.key === 'Escape') { setAddingColumn(false); setNewColumnName('') }
+                }}
+                placeholder="Column name (e.g. Store)"
+                className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-purple-500 w-36"
+              />
+              <button onClick={addColumn} className="text-xs text-purple-600 hover:text-purple-700 font-medium">Add</button>
+              <button onClick={() => { setAddingColumn(false); setNewColumnName('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAddingColumn(true)}
+              className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 font-medium"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add column
+            </button>
+          )}
+        </div>
         {savingCredentials && <p className="text-[11px] text-gray-400 mt-1">Saving…</p>}
       </div>
 

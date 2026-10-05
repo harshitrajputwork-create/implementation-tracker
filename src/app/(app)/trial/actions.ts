@@ -49,6 +49,7 @@ export async function updateTrialAccountAction(
     modules?: string[]
     useCaseNotes?: string | null
     demoCredentials?: DemoCredential[]
+    demoCredentialColumns?: string[]
     status?: TrialStatus
     trialStartDate?: string | null
     trialEndDate?: string | null
@@ -67,6 +68,7 @@ export async function updateTrialAccountAction(
   if (fields.modules !== undefined) payload.modules = fields.modules
   if (fields.useCaseNotes !== undefined) payload.use_case_notes = fields.useCaseNotes?.trim() || null
   if (fields.demoCredentials !== undefined) payload.demo_credentials = fields.demoCredentials
+  if (fields.demoCredentialColumns !== undefined) payload.demo_credential_columns = fields.demoCredentialColumns
   if (fields.status !== undefined) payload.status = fields.status
   if (fields.trialStartDate !== undefined) payload.trial_start_date = fields.trialStartDate || null
   if (fields.trialEndDate !== undefined) payload.trial_end_date = fields.trialEndDate || null
