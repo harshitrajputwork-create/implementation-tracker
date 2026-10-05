@@ -2,10 +2,11 @@
 
 import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, FlaskConical, ExternalLink } from 'lucide-react'
+import { Plus, FlaskConical, ExternalLink, X } from 'lucide-react'
 import { addTrialAccountAction } from './actions'
-import { daysSince } from '@/lib/utils'
+import { daysSince, subdomainOf } from '@/lib/utils'
 import { TICKET_SIZES, TICKET_SIZE_COLOR } from '@/lib/ticket-size'
+import MultiFilter, { unique } from '@/components/MultiFilter'
 import type { TrialAccount, TrialStatus, ConfigOption, Profile } from '@/lib/types'
 
 const STATUSES: TrialStatus[] = ['Active', 'Stalled', 'Converted', 'Lost']
@@ -36,14 +37,29 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
   const [salesSpoc, setSalesSpoc] = useState('')
   const [country, setCountry] = useState('')
   const [companySize, setCompanySize] = useState('')
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
+  const [startDate, setStartDate] = useState('')
+
+  const [countryF, setCountryF] = useState<string[]>([])
+  const [spocF, setSpocF]       = useState<string[]>([])
+  const [sizeF, setSizeF]       = useState<string[]>([])
 
   const spocOptions    = configOptions.filter((o) => o.config_key === 'sales_spoc')
   const countryOptions = configOptions.filter((o) => o.config_key === 'country')
 
+  const countryOpts = unique(trials.map((t) => t.country))
+  const spocOpts     = unique(trials.map((t) => t.sales_spoc))
+  const sizeOpts      = unique(trials.map((t) => t.company_size))
+  const anyFilter = countryF.length || spocF.length || sizeF.length
+
   const filtered = useMemo(
-    () => (statusFilter === 'All' ? trials : trials.filter((t) => t.status === statusFilter)),
-    [trials, statusFilter],
+    () => trials.filter((t) => {
+      if (statusFilter !== 'All' && t.status !== statusFilter) return false
+      if (countryF.length && !countryF.includes(t.country ?? '')) return false
+      if (spocF.length && !spocF.includes(t.sales_spoc ?? '')) return false
+      if (sizeF.length && !sizeF.includes(t.company_size ?? '')) return false
+      return true
+    }),
+    [trials, statusFilter, countryF, spocF, sizeF],
   )
 
   const counts = STATUSES.reduce<Record<string, number>>((acc, s) => {
@@ -57,12 +73,12 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
     start(async () => {
       const result = await addTrialAccountAction({
         name, trialUrl, salesSpoc, country, companySize,
-        trialStartDate: startDate || new Date().toISOString().split('T')[0],
+        trialStartDate: startDate || undefined,
       })
       if (result.error) { setError(result.error); return }
       if (result.id) router.push(`/trial/${result.id}`)
     })
-    setName(''); setTrialUrl(''); setSalesSpoc(''); setCountry(''); setCompanySize(''); setStartDate(new Date().toISOString().split('T')[0])
+    setName(''); setTrialUrl(''); setSalesSpoc(''); setCountry(''); setCompanySize(''); setStartDate('')
   }
 
   return (
@@ -96,7 +112,7 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
             {TICKET_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
           <div>
-            <label className="text-[10px] text-gray-400 block mb-0.5">Trial start date</label>
+            <label className="text-[10px] text-gray-400 block mb-0.5">Trial start date (optional)</label>
             <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={`${inputCls} w-full`} />
           </div>
         </div>
@@ -129,6 +145,18 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
             {s} ({counts[s] ?? 0})
           </button>
         ))}
+        <span className="w-px h-5 bg-gray-200 mx-1" />
+        {countryOpts.length > 0 && <MultiFilter label="Country" options={countryOpts} selected={countryF} onChange={setCountryF} accentColor="purple" />}
+        {spocOpts.length > 0 && <MultiFilter label="Sales SPOC" options={spocOpts} selected={spocF} onChange={setSpocF} accentColor="purple" />}
+        {sizeOpts.length > 0 && <MultiFilter label="Size" options={sizeOpts} selected={sizeF} onChange={setSizeF} accentColor="purple" />}
+        {!!anyFilter && (
+          <button
+            onClick={() => { setCountryF([]); setSpocF([]); setSizeF([]) }}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 px-2 py-1.5"
+          >
+            <X className="w-3 h-3" /> Clear filters
+          </button>
+        )}
       </div>
 
       {/* Table */}
@@ -146,13 +174,14 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">Size</th>
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">In trial</th>
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">Status</th>
-                  <th className="px-4 py-3" />
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">Subdomain</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map((t) => {
                   const days = daysSince(t.trial_start_date)
                   const owner = t.owner as Profile | null
+                  const sub = subdomainOf(t.trial_url)
                   return (
                     <tr
                       key={t.id}
@@ -177,18 +206,18 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLOR[t.status]}`}>{t.status}</span>
                       </td>
                       <td className="px-4 py-4">
-                        {t.trial_url && (
+                        {t.trial_url && sub ? (
                           <a
                             href={t.trial_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="text-gray-300 hover:text-purple-600 transition-colors"
-                            title="Open trial URL"
+                            className="flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors"
+                            title={t.trial_url}
                           >
-                            <ExternalLink className="w-4 h-4" />
+                            {sub} <ExternalLink className="w-3 h-3" />
                           </a>
-                        )}
+                        ) : <span className="text-sm text-gray-400">—</span>}
                       </td>
                     </tr>
                   )

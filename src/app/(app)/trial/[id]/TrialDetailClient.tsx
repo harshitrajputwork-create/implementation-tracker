@@ -4,13 +4,13 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  ExternalLink, CalendarClock, Trash2, Send, ArrowRight, Pencil, Check, X,
+  ExternalLink, CalendarClock, Trash2, Send, ArrowRight, Pencil, Check, X, Download, Plus, KeyRound,
 } from 'lucide-react'
 import MentionTextarea from '@/components/MentionTextarea'
 import { updateTrialAccountAction, addTrialNoteAction, deleteTrialNoteAction, toggleTrialNoteDeadlineDoneAction, deleteTrialAccountAction } from '../actions'
-import { formatDate, daysSince } from '@/lib/utils'
+import { formatDate, daysSince, subdomainOf, downloadCsv } from '@/lib/utils'
 import { TICKET_SIZES, TICKET_SIZE_COLOR } from '@/lib/ticket-size'
-import type { TrialAccount, TrialStatus, ClientNoteEntry, ConfigOption, Profile } from '@/lib/types'
+import type { TrialAccount, TrialStatus, ClientNoteEntry, ConfigOption, Profile, DemoCredential } from '@/lib/types'
 
 const STATUSES: TrialStatus[] = ['Active', 'Stalled', 'Converted', 'Lost']
 const STATUS_COLOR: Record<TrialStatus, string> = {
@@ -59,6 +59,9 @@ function NoteRow({ note, currentUserId, onDelete, onToggleDeadline }: {
         )}
       </div>
       <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap leading-relaxed">{highlightMentions(note.content)}</p>
+      {note.spoke_with && (
+        <p className="text-[11px] text-gray-400 mt-1">Spoke with: <span className="text-gray-600 font-medium">{note.spoke_with}</span></p>
+      )}
       {note.deadline && (
         <button
           onClick={() => isOwn && onToggleDeadline(!note.deadline_done)}
@@ -112,6 +115,10 @@ export default function TrialDetailClient({
   const [mentionedIds, setMentionedIds] = useState<string[]>([])
   const [showDeadline, setShowDeadline] = useState(false)
   const [deadline, setDeadline] = useState('')
+  const [spokeWith, setSpokeWith] = useState('')
+
+  const [credentials, setCredentials] = useState<DemoCredential[]>(trial.demo_credentials ?? [])
+  const [savingCredentials, setSavingCredentials] = useState(false)
 
   const spocOptions    = configOptions.filter((o) => o.config_key === 'sales_spoc')
   const countryOptions = configOptions.filter((o) => o.config_key === 'country')
@@ -158,10 +165,41 @@ export default function TrialDetailClient({
   function postNote() {
     if (!content.trim()) return
     start(async () => {
-      await addTrialNoteAction(trial.id, content, showDeadline ? deadline || null : null, mentionedIds)
-      setContent(''); setMentionedIds([]); setShowDeadline(false); setDeadline('')
+      await addTrialNoteAction(trial.id, content, showDeadline ? deadline || null : null, mentionedIds, spokeWith || null)
+      setContent(''); setMentionedIds([]); setShowDeadline(false); setDeadline(''); setSpokeWith('')
       router.refresh()
     })
+  }
+
+  function addCredentialRow() {
+    setCredentials((prev) => [...prev, { label: '', email: '', password: '' }])
+  }
+
+  function updateCredentialRow(index: number, field: keyof DemoCredential, value: string) {
+    setCredentials((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)))
+  }
+
+  function removeCredentialRow(index: number) {
+    const next = credentials.filter((_, i) => i !== index)
+    setCredentials(next)
+    saveCredentials(next)
+  }
+
+  function saveCredentials(next: DemoCredential[] = credentials) {
+    setSavingCredentials(true)
+    start(async () => {
+      await updateTrialAccountAction(trial.id, { demoCredentials: next.filter((c) => c.email.trim() || c.password.trim()) })
+      setSavingCredentials(false)
+      router.refresh()
+    })
+  }
+
+  function exportCredentialsCsv() {
+    downloadCsv(
+      `${trial.name.replace(/[^a-z0-9]+/gi, '-')}-demo-logins.csv`,
+      ['Label', 'Email', 'Password'],
+      credentials.filter((c) => c.email.trim()).map((c) => [c.label, c.email, c.password]),
+    )
   }
 
   function deleteNote(id: string) {
@@ -305,8 +343,8 @@ export default function TrialDetailClient({
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLOR[trial.status]}`}>{trial.status}</span>
               </div>
               {trial.trial_url && (
-                <a href={trial.trial_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 font-medium border border-purple-200 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-full transition-colors flex-shrink-0">
-                  <ExternalLink className="w-3 h-3" /> Open trial
+                <a href={trial.trial_url} target="_blank" rel="noopener noreferrer" title={trial.trial_url} className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 font-medium border border-purple-200 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-full transition-colors flex-shrink-0">
+                  <ExternalLink className="w-3 h-3" /> {subdomainOf(trial.trial_url) ?? 'Open trial'}
                 </a>
               )}
             </div>
@@ -345,10 +383,69 @@ export default function TrialDetailClient({
           onChange={(e) => setUseCaseNotes(e.target.value)}
           onBlur={() => { if (useCaseNotes !== (trial.use_case_notes ?? '')) saveUseCaseNotes() }}
           placeholder="What use case are you demoing to this client during the trial?"
-          rows={3}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-purple-500 resize-none placeholder-gray-400 bg-white"
+          rows={12}
+          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-purple-500 resize-y placeholder-gray-400 bg-white font-mono"
         />
         {savingUseCase && <p className="text-[11px] text-gray-400 mt-1">Saving…</p>}
+      </div>
+
+      {/* Demo credentials */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+            <KeyRound className="w-3.5 h-3.5" /> Demo logins for client
+          </p>
+          {credentials.length > 0 && (
+            <button
+              onClick={exportCredentialsCsv}
+              className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 font-medium"
+            >
+              <Download className="w-3.5 h-3.5" /> Download CSV
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-gray-400 mb-3">Dummy accounts + one-time temp passwords to hand off to the client — kept separate from your use-case notes above.</p>
+
+        {credentials.length > 0 && (
+          <div className="space-y-2 mb-3">
+            {credentials.map((c, i) => (
+              <div key={i} className="grid grid-cols-[1fr_1.5fr_1fr_auto] gap-2 items-center">
+                <input
+                  value={c.label}
+                  onChange={(e) => updateCredentialRow(i, 'label', e.target.value)}
+                  onBlur={() => saveCredentials()}
+                  placeholder="Role (e.g. Manager)"
+                  className={inputCls}
+                />
+                <input
+                  value={c.email}
+                  onChange={(e) => updateCredentialRow(i, 'email', e.target.value)}
+                  onBlur={() => saveCredentials()}
+                  placeholder="employee1@angadi.com"
+                  className={inputCls}
+                />
+                <input
+                  value={c.password}
+                  onChange={(e) => updateCredentialRow(i, 'password', e.target.value)}
+                  onBlur={() => saveCredentials()}
+                  placeholder="Temp password"
+                  className={inputCls}
+                />
+                <button onClick={() => removeCredentialRow(i)} title="Remove" className="text-gray-300 hover:text-red-500 p-1">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          onClick={addCredentialRow}
+          className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 font-medium"
+        >
+          <Plus className="w-3.5 h-3.5" /> Add login
+        </button>
+        {savingCredentials && <p className="text-[11px] text-gray-400 mt-1">Saving…</p>}
       </div>
 
       {/* Status + convert */}
@@ -409,6 +506,12 @@ export default function TrialDetailClient({
             placeholder="Log a note… type @ to tag someone"
             rows={2}
             className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-purple-500 resize-none placeholder-gray-400 bg-white"
+          />
+          <input
+            value={spokeWith}
+            onChange={(e) => setSpokeWith(e.target.value)}
+            placeholder="Spoke with (optional — client contact's name)"
+            className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-gray-400 bg-white"
           />
           {showDeadline ? (
             <div className="flex items-center gap-2">

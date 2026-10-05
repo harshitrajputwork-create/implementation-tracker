@@ -51,6 +51,12 @@ export interface Client {
 
 export type TrialStatus = 'Active' | 'Stalled' | 'Converted' | 'Lost'
 
+export interface DemoCredential {
+  label: string
+  email: string
+  password: string
+}
+
 export interface TrialAccount {
   id: string
   name: string
@@ -60,6 +66,7 @@ export interface TrialAccount {
   company_size: string | null
   modules: string[] | null
   use_case_notes: string | null
+  demo_credentials: DemoCredential[] | null
   status: TrialStatus
   trial_start_date: string | null
   trial_end_date: string | null
@@ -201,6 +208,7 @@ export interface ClientNoteEntry {
   deadline: string | null
   deadline_done: boolean
   mentioned_ids: string[]
+  spoke_with: string | null
   created_at: string
 }
 

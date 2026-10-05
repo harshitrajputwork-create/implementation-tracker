@@ -4,7 +4,7 @@ import { getSessionUser } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { notifyMentions } from '@/lib/notify'
-import type { TrialStatus } from '@/lib/types'
+import type { TrialStatus, DemoCredential } from '@/lib/types'
 
 export async function addTrialAccountAction(fields: {
   name: string
@@ -48,6 +48,7 @@ export async function updateTrialAccountAction(
     companySize?: string | null
     modules?: string[]
     useCaseNotes?: string | null
+    demoCredentials?: DemoCredential[]
     status?: TrialStatus
     trialStartDate?: string | null
     trialEndDate?: string | null
@@ -65,6 +66,7 @@ export async function updateTrialAccountAction(
   if (fields.companySize !== undefined) payload.company_size = fields.companySize?.trim() || null
   if (fields.modules !== undefined) payload.modules = fields.modules
   if (fields.useCaseNotes !== undefined) payload.use_case_notes = fields.useCaseNotes?.trim() || null
+  if (fields.demoCredentials !== undefined) payload.demo_credentials = fields.demoCredentials
   if (fields.status !== undefined) payload.status = fields.status
   if (fields.trialStartDate !== undefined) payload.trial_start_date = fields.trialStartDate || null
   if (fields.trialEndDate !== undefined) payload.trial_end_date = fields.trialEndDate || null
@@ -97,6 +99,7 @@ export async function addTrialNoteAction(
   content: string,
   deadline: string | null,
   mentionedIds: string[] = [],
+  spokeWith: string | null = null,
 ) {
   const { supabase, user } = await getSessionUser()
   if (!user || !content.trim()) return
@@ -117,6 +120,7 @@ export async function addTrialNoteAction(
       is_personal: false,
       deadline: deadline || null,
       mentioned_ids: mentionedIds,
+      spoke_with: spokeWith?.trim() || null,
     })
     .select('id')
     .single()
