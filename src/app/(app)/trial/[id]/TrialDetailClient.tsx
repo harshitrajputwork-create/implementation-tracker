@@ -466,23 +466,6 @@ export default function TrialDetailClient({
           </Link>
         )}
       </div>
-      </div>
-
-      {/* Right column — working content */}
-      <div className="space-y-6">
-      {/* Use case for client */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Use case for client</p>
-        <textarea
-          value={useCaseNotes}
-          onChange={(e) => setUseCaseNotes(e.target.value)}
-          onBlur={() => { if (useCaseNotes !== (trial.use_case_notes ?? '')) saveUseCaseNotes() }}
-          placeholder="What use case are you demoing to this client during the trial?"
-          rows={12}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-purple-500 resize-y placeholder-gray-400 bg-white font-mono"
-        />
-        {savingUseCase && <p className="text-[11px] text-gray-400 mt-1">Saving…</p>}
-      </div>
 
       {/* Demo credentials */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
@@ -602,6 +585,23 @@ export default function TrialDetailClient({
           )}
         </div>
         {savingCredentials && <p className="text-[11px] text-gray-400 mt-1">Saving…</p>}
+      </div>
+      </div>
+
+      {/* Right column — working content */}
+      <div className="space-y-6">
+      {/* Use case for client */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Use case for client</p>
+        <textarea
+          value={useCaseNotes}
+          onChange={(e) => setUseCaseNotes(e.target.value)}
+          onBlur={() => { if (useCaseNotes !== (trial.use_case_notes ?? '')) saveUseCaseNotes() }}
+          placeholder="What use case are you demoing to this client during the trial?"
+          rows={12}
+          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-purple-500 resize-y placeholder-gray-400 bg-white font-mono"
+        />
+        {savingUseCase && <p className="text-[11px] text-gray-400 mt-1">Saving…</p>}
       </div>
 
       {/* Notes */}
