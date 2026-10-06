@@ -652,11 +652,14 @@ export default function TrialDetailClient({
               <CalendarClock className="w-3.5 h-3.5" /> Add deadline / reminder
             </button>
           )}
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-2">
+            {!content.trim() && spokeWith.trim() && (
+              <p className="text-[11px] text-amber-600">Write the note above too — &quot;Spoke with&quot; alone won&apos;t post.</p>
+            )}
             <button
               onClick={postNote}
               disabled={isPending || !content.trim()}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-gray-800 disabled:opacity-40 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-gray-800 disabled:opacity-40 transition-colors ml-auto"
             >
               <Send className="w-3.5 h-3.5" /> {isPending ? 'Posting…' : 'Post note'}
             </button>
