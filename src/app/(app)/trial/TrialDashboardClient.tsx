@@ -37,7 +37,6 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
   const [salesSpoc, setSalesSpoc] = useState('')
   const [country, setCountry] = useState('')
   const [companySize, setCompanySize] = useState('')
-  const [startDate, setStartDate] = useState('')
 
   const [countryF, setCountryF] = useState<string[]>([])
   const [spocF, setSpocF]       = useState<string[]>([])
@@ -71,14 +70,11 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
     if (!name.trim()) return
     setError(null)
     start(async () => {
-      const result = await addTrialAccountAction({
-        name, trialUrl, salesSpoc, country, companySize,
-        trialStartDate: startDate || undefined,
-      })
+      const result = await addTrialAccountAction({ name, trialUrl, salesSpoc, country, companySize })
       if (result.error) { setError(result.error); return }
       if (result.id) router.push(`/trial/${result.id}`)
     })
-    setName(''); setTrialUrl(''); setSalesSpoc(''); setCountry(''); setCompanySize(''); setStartDate('')
+    setName(''); setTrialUrl(''); setSalesSpoc(''); setCountry(''); setCompanySize('')
   }
 
   return (
@@ -96,7 +92,7 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
       {/* Quick add */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Log a new trial</p>
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-2">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Account name" className={inputCls} />
           <input value={trialUrl} onChange={(e) => setTrialUrl(e.target.value)} placeholder="Trial URL" className={inputCls} />
           <select value={salesSpoc} onChange={(e) => setSalesSpoc(e.target.value)} className={inputCls}>
@@ -111,11 +107,8 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
             <option value="">Size of account</option>
             {TICKET_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
-          <div>
-            <label className="text-[10px] text-gray-400 block mb-0.5">Trial start date (optional)</label>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={`${inputCls} w-full`} />
-          </div>
         </div>
+        <p className="text-[11px] text-gray-400 mb-2">Trial start date isn&apos;t set here — add it on the account page once the trial actually kicks off.</p>
         <div className="flex justify-end">
           <button
             onClick={addTrial}
