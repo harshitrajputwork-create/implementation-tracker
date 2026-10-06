@@ -120,6 +120,7 @@ export default function TrialDetailClient({
   const [credentials, setCredentials] = useState<DemoCredential[]>(trial.demo_credentials ?? [])
   const [columns, setColumns] = useState<string[]>(trial.demo_credential_columns ?? [])
   const [savingCredentials, setSavingCredentials] = useState(false)
+  const [credentialsError, setCredentialsError] = useState<string | null>(null)
   const [addingColumn, setAddingColumn] = useState(false)
   const [newColumnName, setNewColumnName] = useState('')
 
@@ -217,12 +218,14 @@ export default function TrialDetailClient({
 
   function saveCredentials(next: DemoCredential[] = credentials, cols: string[] = columns) {
     setSavingCredentials(true)
+    setCredentialsError(null)
     start(async () => {
-      await updateTrialAccountAction(trial.id, {
+      const result = await updateTrialAccountAction(trial.id, {
         demoCredentials: next.filter((c) => c.id.trim() || c.password.trim()),
         demoCredentialColumns: cols,
       })
       setSavingCredentials(false)
+      if (result?.error) { setCredentialsError(result.error); return }
       router.refresh()
     })
   }
@@ -585,6 +588,7 @@ export default function TrialDetailClient({
           )}
         </div>
         {savingCredentials && <p className="text-[11px] text-gray-400 mt-1">Saving…</p>}
+        {credentialsError && <p className="text-[11px] text-red-600 mt-1 font-medium">Not saved — {credentialsError}</p>}
       </div>
       </div>
 
