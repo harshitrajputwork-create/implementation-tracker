@@ -42,6 +42,7 @@ export default function Sidebar({ user, clients }: SidebarProps) {
   const [hovered, setHovered]         = useState(false)
   const [clientsOpen, setClientsOpen] = useState(true)
   const [mobileOpen, setMobileOpen]   = useState(false)
+  const [tourExpanded, setTourExpanded] = useState(false)
 
   useEffect(() => {
     setPinned(localStorage.getItem('sidebar_pinned') === 'true')
@@ -52,7 +53,18 @@ export default function Sidebar({ user, clients }: SidebarProps) {
     setMobileOpen(false)
   }, [pathname])
 
-  const expanded = pinned || hovered || mobileOpen
+  // The onboarding tour force-expands the sidebar while it's highlighting
+  // something inside it (e.g. the mode toggle), so the text labels are
+  // visible instead of just icons.
+  useEffect(() => {
+    function onTourSidebar(e: Event) {
+      setTourExpanded(!!(e as CustomEvent<{ expanded: boolean }>).detail?.expanded)
+    }
+    window.addEventListener('onboarding:sidebar', onTourSidebar)
+    return () => window.removeEventListener('onboarding:sidebar', onTourSidebar)
+  }, [])
+
+  const expanded = pinned || hovered || mobileOpen || tourExpanded
 
   // Mode is derived from the route when the route is mode-defining (/trial/*,
   // /dashboard, /clients/*), and otherwise falls back to the last mode-defining

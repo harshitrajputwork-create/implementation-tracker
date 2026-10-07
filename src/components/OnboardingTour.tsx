@@ -9,6 +9,14 @@ import type { Role } from '@/lib/types'
 
 const STORAGE_KEY = 'onboarding_tour_done_v1'
 
+// Steps that highlight something inside the sidebar read better with the
+// sidebar fully expanded (text labels visible, not just icons).
+const SIDEBAR_SELECTORS = ['[data-tour="mode-toggle"]', '[data-tour="admin-links"]', '[data-tour="notif-bell"]']
+
+function setSidebarExpanded(expanded: boolean) {
+  window.dispatchEvent(new CustomEvent('onboarding:sidebar', { detail: { expanded } }))
+}
+
 function waitForElement(selector: string, timeoutMs = 4000): Promise<boolean> {
   return new Promise((resolve) => {
     const start = Date.now()
@@ -34,6 +42,7 @@ export default function OnboardingTour({ role }: { role: Role }) {
     const steps = stepsRef.current
     const step = steps[index]
     if (!step || !driverRef.current) return
+    setSidebarExpanded(SIDEBAR_SELECTORS.includes(step.selector))
     if (pathnameRef.current !== step.path) {
       router.push(step.path)
       await waitForElement(step.selector)
@@ -45,6 +54,7 @@ export default function OnboardingTour({ role }: { role: Role }) {
 
   function finish() {
     driverRef.current?.destroy()
+    setSidebarExpanded(false)
     try { localStorage.setItem(STORAGE_KEY, '1') } catch {}
   }
 
