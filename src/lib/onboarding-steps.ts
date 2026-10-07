@@ -1,15 +1,22 @@
 import type { Role } from './types'
 
 export interface TourStep {
-  path: string
+  path?: string
+  // Sequence of real, already-on-page elements to click through (each
+  // waited for before clicking) to arrive at `selector` — used for steps
+  // that drill into a real account instead of just describing the list.
+  clickPath?: string[]
   selector: string
   title: string
   description: string
 }
 
+const FIRST_CLIENT_ROW = '[data-tour="dashboard-clients"] tbody tr.cursor-pointer'
+
 // Steps every signed-in role sees, in order. Each targets a real element on
-// a real page — the tour navigates the browser to `path`, waits for
-// `selector` to appear, then highlights it.
+// a real page — the tour navigates the browser (via router.push, or by
+// clicking through real elements already on the page), waits for the
+// target to appear, then highlights it.
 const CORE_STEPS: TourStep[] = [
   {
     path: '/dashboard',
@@ -31,15 +38,17 @@ const CORE_STEPS: TourStep[] = [
   },
   {
     path: '/dashboard',
-    selector: '[data-tour="dashboard-clients"]',
+    clickPath: [FIRST_CLIENT_ROW, '[data-tour="tab-growth"]'],
+    selector: '[data-tour="growth-tab"]',
     title: 'Growth: use cases & exports',
-    description: 'Open any client → Growth tab to see use cases matched to that client\'s industry — tick what they\'re already using. It feeds the Client Update and Journey Report PDF exports, including what they could explore next.',
+    description: 'This client\'s Growth tab — use cases matched to its industry. Tick what they\'re already using. It feeds the Client Update and Journey Report PDF exports, including what they could explore next.',
   },
   {
     path: '/dashboard',
-    selector: '[data-tour="dashboard-clients"]',
+    clickPath: [FIRST_CLIENT_ROW, '[data-tour="tab-plan"]'],
+    selector: '[data-tour="client-notes"]',
     title: 'Notes — team or personal',
-    description: 'Inside any account, log notes as Team (everyone sees) or Personal (just you), tag a teammate with @, and set a deadline. The latest note on every account also surfaces in your Planner.',
+    description: 'Log notes as Team (everyone sees) or Personal (just you), tag a teammate with @, and set a deadline. The latest note on every account also surfaces in your Planner.',
   },
 ]
 

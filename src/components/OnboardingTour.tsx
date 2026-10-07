@@ -43,12 +43,29 @@ export default function OnboardingTour({ role }: { role: Role }) {
     const step = steps[index]
     if (!step || !driverRef.current) return
     setSidebarExpanded(SIDEBAR_SELECTORS.includes(step.selector))
-    if (pathnameRef.current !== step.path) {
-      router.push(step.path)
+
+    if (step.clickPath && step.clickPath.length > 0) {
+      // Navigate to the starting page (if needed), then click through real,
+      // already-on-page elements one at a time — same path a person would
+      // actually take (e.g. click a client row, then its Growth tab).
+      if (step.path && pathnameRef.current !== step.path) {
+        router.push(step.path)
+      }
+      for (const sel of step.clickPath) {
+        const found = await waitForElement(sel)
+        if (!found) break
+        ;(document.querySelector(sel) as HTMLElement | null)?.click()
+      }
       await waitForElement(step.selector)
-    } else {
-      await waitForElement(step.selector, 1000)
+    } else if (step.path) {
+      if (pathnameRef.current !== step.path) {
+        router.push(step.path)
+        await waitForElement(step.selector)
+      } else {
+        await waitForElement(step.selector, 1000)
+      }
     }
+
     driverRef.current.drive(index)
   }
 

@@ -249,6 +249,7 @@ export default async function ClientDetailPage({
           <Link
             key={value}
             href={value === 'plan' ? `/clients/${id}` : `/clients/${id}?tab=${value}`}
+            data-tour={value === 'growth' ? 'tab-growth' : 'tab-plan'}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
               activeTab === value
                 ? 'border-blue-600 text-blue-600'
@@ -262,13 +263,15 @@ export default async function ClientDetailPage({
 
       {/* Tab content */}
       {activeTab === 'growth' ? (
-        <GrowthTab
-          clientId={id}
-          industry={typedClient.industry}
-          useCases={useCases}
-          clientUseCases={clientUseCases}
-          canEdit={canEdit}
-        />
+        <div data-tour="growth-tab">
+          <GrowthTab
+            clientId={id}
+            industry={typedClient.industry}
+            useCases={useCases}
+            clientUseCases={clientUseCases}
+            canEdit={canEdit}
+          />
+        </div>
       ) : (
         <div className="flex flex-col md:flex-row gap-8 md:items-start">
           {/* Left: Plan timeline — fills all remaining space */}
@@ -306,16 +309,18 @@ export default async function ClientDetailPage({
               clientId={id}
               canEdit={canEdit}
             />
-            <ClientNotes
-              clientId={id}
-              currentUserId={currentUserId}
-              teamEntries={clientNotes.filter((n) => !n.is_personal)}
-              personalEntries={clientNotes.filter((n) => n.is_personal)}
-              legacyTeamNote={typedClient.notes ?? ''}
-              legacyPersonalNote={personalNote}
-              members={members}
-              canEdit={canEdit}
-            />
+            <div data-tour="client-notes">
+              <ClientNotes
+                clientId={id}
+                currentUserId={currentUserId}
+                teamEntries={clientNotes.filter((n) => !n.is_personal)}
+                personalEntries={clientNotes.filter((n) => n.is_personal)}
+                legacyTeamNote={typedClient.notes ?? ''}
+                legacyPersonalNote={personalNote}
+                members={members}
+                canEdit={canEdit}
+              />
+            </div>
           </div>
         </div>
       )}
