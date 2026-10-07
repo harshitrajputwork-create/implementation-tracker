@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/supabase/server'
 import Sidebar from '@/components/Sidebar'
+import OnboardingTour from '@/components/OnboardingTour'
 import { IS_DEV_BYPASS, MOCK_PROFILE, MOCK_CLIENTS } from '@/lib/dev-mock'
 
 export default async function AppLayout({
@@ -33,6 +34,7 @@ export default async function AppLayout({
     <div className="flex h-screen overflow-hidden bg-gray-50">
       <Sidebar user={profile} clients={clients} />
       <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden pt-14 md:pt-0">{children}</main>
+      <OnboardingTour role={profile.role} />
     </div>
   )
 }

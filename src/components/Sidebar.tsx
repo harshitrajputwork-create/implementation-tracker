@@ -12,7 +12,7 @@ import {
   LayoutDashboard, Plus, LogOut, ClipboardList,
   BookOpen, Sparkles, ChevronDown,
   PanelLeftClose, PanelLeftOpen, Settings, ChevronRight, NotebookPen,
-  Menu, X, FlaskConical,
+  Menu, X, FlaskConical, Compass,
 } from 'lucide-react'
 
 interface SidebarClient { id: string; name: string; status: string }
@@ -183,7 +183,7 @@ export default function Sidebar({ user, clients }: SidebarProps) {
 
         {/* Implementation / Trial toggle */}
         {expanded ? (
-          <div className="flex items-center gap-0.5 bg-slate-800 rounded-lg p-0.5 mt-3">
+          <div data-tour="mode-toggle" className="flex items-center gap-0.5 bg-slate-800 rounded-lg p-0.5 mt-3">
             <Link
               href="/trial"
               className={cn(
@@ -207,6 +207,7 @@ export default function Sidebar({ user, clients }: SidebarProps) {
           <Link
             href={isTrial ? '/dashboard' : '/trial'}
             title={isTrial ? 'Switch to Implementation' : 'Switch to Free Trial'}
+            data-tour="mode-toggle"
             className="flex items-center justify-center mt-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
           >
             {isTrial ? <ClipboardList className="w-4 h-4" /> : <FlaskConical className="w-4 h-4" />}
@@ -370,6 +371,13 @@ export default function Sidebar({ user, clients }: SidebarProps) {
                 )}
               </Link>
             </div>
+            <button
+              onClick={() => window.dispatchEvent(new Event('onboarding:start'))}
+              className="flex items-center gap-3 text-slate-400 hover:text-slate-100 text-sm w-full px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors"
+            >
+              <Compass className="w-4 h-4 flex-shrink-0" />
+              Replay tour
+            </button>
             <button
               onClick={signOut}
               className="flex items-center gap-3 text-slate-400 hover:text-slate-100 text-sm w-full px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors"

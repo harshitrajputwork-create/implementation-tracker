@@ -149,7 +149,7 @@ export default function PlannerClient({
   const openCount = tasks.filter((t) => t.status !== 'done').length
 
   return (
-    <div>
+    <div data-tour="planner-main">
       <datalist id="planner-team-options">
         {teamSuggestions.map((t) => <option key={t} value={t} />)}
       </datalist>

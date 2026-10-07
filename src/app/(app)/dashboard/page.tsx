@@ -88,7 +88,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div data-tour="dashboard-overview" className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <StatCard label="Active Clients" value={counts.active}   icon={Users}          color="text-blue-600"  bg="bg-blue-50"  />
         <StatCard label="On Track"        value={counts.on_track} icon={TrendingUp}     color="text-green-600" bg="bg-green-50" />
         <StatCard label="At Risk"         value={counts.at_risk}  icon={AlertTriangle}  color="text-amber-600" bg="bg-amber-50" />
@@ -96,6 +96,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Table with filters */}
+      <div data-tour="dashboard-clients">
       {activeClients.length === 0 && handedOverClients.length === 0 ? (
         <div className="py-20 text-center bg-white rounded-xl border border-gray-200">
           <Users className="w-12 h-12 text-gray-200 mx-auto mb-4" />
@@ -115,6 +116,7 @@ export default async function DashboardPage() {
           userId={profile?.id ?? null}
         />
       )}
+      </div>
     </div>
   )
 }

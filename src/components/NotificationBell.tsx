@@ -93,6 +93,7 @@ export default function NotificationBell({ expanded }: Props) {
         ref={btnRef}
         onClick={toggleOpen}
         title="Notifications"
+        data-tour="notif-bell"
         className={`relative flex items-center gap-3 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors ${
           expanded ? 'px-3 py-2 w-full' : 'px-2 py-2 justify-center w-full'
         }`}
