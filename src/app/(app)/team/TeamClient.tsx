@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import type { Profile, Invitation, Role } from '@/lib/types'
 import { cn, getInitials } from '@/lib/utils'
 import { inviteUserAction, updateUserRoleAction, revokeInvitationAction, removeMemberAction } from './actions'
-import { Mail, Shield, Plus, X, Check, Trash2 } from 'lucide-react'
+import { Mail, Shield, Plus, X, Check, Trash2, UserPlus } from 'lucide-react'
 
 const ROLES: Role[] = ['admin', 'member', 'visitor']
 
@@ -79,7 +79,7 @@ export default function TeamClient({
       if (res.error) {
         setInviteError(res.error)
       } else {
-        setInviteSuccess(`Invite sent to ${email.trim()}`)
+        setInviteSuccess(`Role pre-assigned for ${email.trim()}`)
         setEmail('')
       }
     })
@@ -102,24 +102,24 @@ export default function TeamClient({
 
   return (
     <div className="space-y-8">
-      {/* Invite form */}
+      {/* Pre-assign role form */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <h2 className="font-semibold text-gray-900 flex items-center gap-2 mb-4">
-          <Mail className="w-4 h-4 text-blue-500" />
-          Invite someone
+          <UserPlus className="w-4 h-4 text-blue-500" />
+          Pre-assign a role
         </h2>
         <p className="text-sm text-gray-500 mb-4">
-          Pre-assign a role to a @taqtics.co address before they&apos;ve ever signed in — e.g. the other founders as Admin.
-          When they sign in with Google for the first time, this role is applied automatically instead of the default.
-          Anyone signing in without a pre-assigned role gets <strong>Visitor</strong> access until an admin changes it here.
-          Only @taqtics.co Google accounts can sign in at all.
+          No email is sent — this just pre-assigns a role to a @taqtics.co address before they&apos;ve ever signed in
+          (e.g. the other founders as Admin). When they sign in with Google for the first time, this role is applied
+          automatically instead of the default. Anyone signing in without a pre-assigned role gets <strong>Visitor</strong>
+          access until an admin changes it here. Only @taqtics.co Google accounts can sign in at all.
         </p>
         <div className="flex items-center gap-3 flex-wrap">
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="name@company.com"
+            placeholder="name@taqtics.co"
             className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <select
@@ -137,7 +137,7 @@ export default function TeamClient({
             className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
             <Plus className="w-4 h-4" />
-            {isPending ? 'Sending…' : 'Send invite'}
+            {isPending ? 'Saving…' : 'Set role'}
           </button>
         </div>
         {inviteError  && <p className="text-sm text-red-600 mt-2">{inviteError}</p>}
@@ -147,7 +147,7 @@ export default function TeamClient({
       {/* Pending invites */}
       {invitations.length > 0 && (
         <div>
-          <h2 className="font-semibold text-gray-900 mb-3">Pending invitations</h2>
+          <h2 className="font-semibold text-gray-900 mb-3">Pre-assigned roles <span className="text-gray-400 font-normal text-sm">(not yet signed in)</span></h2>
           <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden">
             {invitations.map((inv) => (
               <div key={inv.id} className="flex items-center gap-4 px-5 py-3">
@@ -156,7 +156,7 @@ export default function TeamClient({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900">{inv.email}</p>
-                  <p className="text-xs text-gray-400">Invited · not yet signed in</p>
+                  <p className="text-xs text-gray-400">Not signed in yet</p>
                 </div>
                 <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full capitalize', ROLE_COLORS[inv.role])}>
                   {inv.role}
@@ -164,7 +164,7 @@ export default function TeamClient({
                 <button
                   onClick={() => revoke(inv.id)}
                   className="text-gray-400 hover:text-red-500 transition-colors"
-                  title="Revoke invite"
+                  title="Remove pre-assigned role"
                 >
                   <X className="w-4 h-4" />
                 </button>

@@ -13,6 +13,7 @@ export async function inviteUserAction(email: string, role: Role) {
 
   const trimmed = email.trim().toLowerCase()
   if (!trimmed) return { error: 'Email required' }
+  if (!trimmed.endsWith('@taqtics.co')) return { error: 'Only @taqtics.co addresses can sign in — this role would never apply' }
 
   const { error } = await supabase.from('invitations').upsert(
     { email: trimmed, role, invited_by: user.id, accepted: false },

@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Pencil, Check, X, Trash2, Plus, GripVertical } from 'lucide-react'
+import { Pencil, Check, X, Trash2, Plus, ChevronUp, ChevronDown } from 'lucide-react'
 import {
   updateTemplateStepAction,
   deleteTemplateStepAction,
   addTemplateStepAction,
+  reorderTemplateStepsAction,
 } from './actions'
 
 export interface TemplateStep {
@@ -16,7 +17,17 @@ export interface TemplateStep {
   description: string | null
 }
 
-function StepTemplateRow({ step, onDeleted }: { step: TemplateStep; onDeleted: () => void }) {
+function StepTemplateRow({
+  step, onDeleted, onMoveUp, onMoveDown, isFirst, isLast, moving,
+}: {
+  step: TemplateStep
+  onDeleted: () => void
+  onMoveUp: () => void
+  onMoveDown: () => void
+  isFirst: boolean
+  isLast: boolean
+  moving: boolean
+}) {
   const [editing, setEditing] = useState(false)
   const [name, setName]       = useState(step.step_name)
   const [range, setRange]     = useState(step.ideated_day_range)
@@ -96,7 +107,24 @@ function StepTemplateRow({ step, onDeleted }: { step: TemplateStep; onDeleted: (
         </div>
       ) : (
         <div className="flex items-start gap-3">
-          <GripVertical className="w-4 h-4 text-gray-300 mt-0.5 flex-shrink-0" />
+          <div className="flex flex-col flex-shrink-0 mt-0.5">
+            <button
+              onClick={onMoveUp}
+              disabled={isFirst || moving}
+              title="Move up"
+              className="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-20 disabled:hover:text-gray-400 transition-colors"
+            >
+              <ChevronUp className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={onMoveDown}
+              disabled={isLast || moving}
+              title="Move down"
+              className="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-20 disabled:hover:text-gray-400 transition-colors"
+            >
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+          </div>
           <div className="flex-shrink-0 w-16">
             <span className="text-xs font-mono font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
               {step.ideated_day_range}
@@ -212,14 +240,31 @@ function AddStepRow({ onAdded }: { onAdded: () => void }) {
 
 export default function ConfigEditor({ initialSteps }: { initialSteps: TemplateStep[] }) {
   const [steps, setSteps] = useState(initialSteps)
+  const [isPending, start] = useTransition()
+
+  function move(index: number, direction: -1 | 1) {
+    const target = index + direction
+    if (target < 0 || target >= steps.length) return
+    const next = [...steps]
+    ;[next[index], next[target]] = [next[target], next[index]]
+    setSteps(next)
+    start(async () => {
+      await reorderTemplateStepsAction(next.map((s) => s.id))
+    })
+  }
 
   return (
     <div className="space-y-3">
-      {steps.map((step) => (
+      {steps.map((step, i) => (
         <StepTemplateRow
           key={step.id}
           step={step}
           onDeleted={() => setSteps((s) => s.filter((r) => r.id !== step.id))}
+          onMoveUp={() => move(i, -1)}
+          onMoveDown={() => move(i, 1)}
+          isFirst={i === 0}
+          isLast={i === steps.length - 1}
+          moving={isPending}
         />
       ))}
       <AddStepRow onAdded={() => {}} />
