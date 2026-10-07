@@ -112,7 +112,7 @@ export default function Sidebar({ user, clients }: SidebarProps) {
         )}
       >
         <Icon className="w-4 h-4 flex-shrink-0" />
-        {expanded && <span className="whitespace-nowrap overflow-hidden flex-1">{label}</span>}
+        {expanded && <span className="whitespace-nowrap overflow-hidden text-ellipsis flex-1">{label}</span>}
         {badge !== undefined && badge > 0 && expanded && (
           <span className={cn('text-xs text-white rounded-full px-1.5 py-0.5 font-semibold leading-none', accentBg)}>
             {badge}
@@ -294,38 +294,35 @@ export default function Sidebar({ user, clients }: SidebarProps) {
         )}
       </nav>
 
-      {/* Sticky tools — Planner + Notifications, top of the bottom panel, for everyone */}
-      <div className={cn('border-t border-slate-800 py-2 flex-shrink-0 space-y-0.5', expanded ? 'px-3' : 'px-2')}>
-        <NavLink href="/planner" label="Planner" icon={NotebookPen} />
+      {/* Sticky tools — Planner, Notifications, and (admin) Use Cases/Settings,
+          merged into one compact block so the Clients list above keeps more
+          of the available height instead of being squeezed by several
+          separately-bordered sections. */}
+      <div className={cn('border-t border-slate-800 py-1.5 flex-shrink-0 space-y-0.5', expanded ? 'px-3' : 'px-2')}>
+        <NavLink href="/planner" label="Planner & Activity" icon={NotebookPen} />
         <NotificationBell expanded={expanded} />
+        {isAdmin && <div data-tour="admin-links">{[
+          { href: '/library',    label: 'Use Cases', icon: BookOpen },
+          { href: settingsHref,  label: 'Settings',  icon: Settings },
+        ].map(({ href, label, icon: Icon }) => {
+          const isActive = pathname.startsWith(href)
+          return (
+            <Link
+              key={href}
+              href={href}
+              title={!expanded ? label : undefined}
+              className={cn(
+                'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors',
+                expanded ? 'px-3 py-1.5' : 'px-2 py-1.5 justify-center',
+                isActive ? accentBg + ' text-white' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800',
+              )}
+            >
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              {expanded && <span className="whitespace-nowrap overflow-hidden">{label}</span>}
+            </Link>
+          )
+        })}</div>}
       </div>
-
-      {/* Admin links */}
-      {isAdmin && (
-        <div className={cn('border-t border-slate-800 py-2 flex-shrink-0 space-y-0.5', expanded ? 'px-3' : 'px-2')}>
-          {[
-            { href: '/library',    label: 'Use Cases', icon: BookOpen },
-            { href: settingsHref,  label: 'Settings',  icon: Settings },
-          ].map(({ href, label, icon: Icon }) => {
-            const isActive = pathname.startsWith(href)
-            return (
-              <Link
-                key={href}
-                href={href}
-                title={!expanded ? label : undefined}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors',
-                  expanded ? 'px-3 py-2' : 'px-2 py-2 justify-center',
-                  isActive ? accentBg + ' text-white' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800',
-                )}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                {expanded && <span className="whitespace-nowrap overflow-hidden">{label}</span>}
-              </Link>
-            )
-          })}
-        </div>
-      )}
 
       {/* Pin toggle */}
       <div className={cn('border-t border-slate-800 pt-1 pb-1 flex-shrink-0', expanded ? 'px-3' : 'px-2')}>
@@ -333,7 +330,7 @@ export default function Sidebar({ user, clients }: SidebarProps) {
           onClick={togglePin}
           title={pinned ? 'Collapse sidebar' : 'Keep sidebar open'}
           className={cn(
-            'flex items-center gap-2 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition-colors py-2',
+            'flex items-center gap-2 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition-colors py-1.5',
             expanded ? 'px-3 w-full' : 'px-2 justify-center w-full',
           )}
         >
@@ -347,7 +344,7 @@ export default function Sidebar({ user, clients }: SidebarProps) {
       </div>
 
       {/* User + sign out */}
-      <div className={cn('border-t border-slate-800 py-4 flex-shrink-0', expanded ? 'px-3' : 'px-2')}>
+      <div className={cn('border-t border-slate-800 py-2 flex-shrink-0', expanded ? 'px-3' : 'px-2')}>
         {expanded ? (
           <>
             <div className="flex items-center gap-3 px-3 py-2 mb-1">

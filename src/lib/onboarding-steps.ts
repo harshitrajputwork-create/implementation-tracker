@@ -13,66 +13,52 @@ export interface TourStep {
 const CORE_STEPS: TourStep[] = [
   {
     path: '/dashboard',
-    selector: '[data-tour="dashboard-overview"]',
-    title: 'Dashboard',
-    description: 'Your active Implementation clients at a glance — counts of On Track, At Risk and Blocked accounts update automatically.',
-  },
-  {
-    path: '/dashboard',
     selector: '[data-tour="mode-toggle"]',
-    title: 'Implementation vs Trial',
-    description: 'This toggle switches the whole app between two modes: Implementation (live rollouts) and Trial (pre-implementation accounts). Everything in the sidebar changes with it.',
+    title: 'Trial vs Implementation',
+    description: 'This switch flips the whole app between two modes — Trial (accounts before they go live) and Implementation (live rollouts). Everything in the sidebar changes with it.',
   },
   {
     path: '/trial',
     selector: '[data-tour="trial-dashboard"]',
     title: 'Free Trial',
-    description: 'Accounts trialing before they become a real Implementation — track demo logins, the use case you\'re demoing, and notes here, separate from live clients.',
+    description: 'Every trial account lives in this list — click any row (e.g. Mayave) to open it. Demo logins, the use case you\'re demoing, and notes all live on that account\'s page.',
   },
   {
     path: '/dashboard',
     selector: '[data-tour="dashboard-clients"]',
-    title: 'Clients & the 30-day plan',
-    description: 'Open any client to see its 30-day rollout plan, team notes, and client SPOCs. Progress and status update as steps get marked done.',
+    title: 'Implementation clients',
+    description: 'Same idea on the Implementation side — click any client row to open its 30-day plan, notes, and Growth tab.',
   },
   {
     path: '/dashboard',
     selector: '[data-tour="dashboard-clients"]',
-    title: 'Journey Report & Client Update',
-    description: 'Inside any client, the Journey Report and Client Update buttons export a client-facing PDF summary — what\'s done, what\'s next, and growth opportunities.',
+    title: 'Growth: use cases & exports',
+    description: 'Open any client → Growth tab to see use cases matched to that client\'s industry — tick what they\'re already using. It feeds the Client Update and Journey Report PDF exports, including what they could explore next.',
+  },
+  {
+    path: '/dashboard',
+    selector: '[data-tour="dashboard-clients"]',
+    title: 'Notes — team or personal',
+    description: 'Inside any account, log notes as Team (everyone sees) or Personal (just you), tag a teammate with @, and set a deadline. The latest note on every account also surfaces in your Planner.',
   },
 ]
 
 const PLANNER_STEP: TourStep = {
   path: '/planner',
   selector: '[data-tour="planner-main"]',
-  title: 'Planner',
-  description: 'Your own cross-account task list — tasks from any client or trial account, plus anything you add directly, all in one private place.',
+  title: 'Planner & Activity',
+  description: 'Use this like a notepad across every account — your own cross-account task list, plus the latest note from any client or trial account so you can see what happened last.',
 }
 
-const NOTIF_STEP: TourStep = {
-  path: '/dashboard',
-  selector: '[data-tour="notif-bell"]',
-  title: 'Notifications',
-  description: 'Mentions and upcoming deadlines land here — from both Implementation and Trial, color-coded so you can tell them apart.',
-}
-
-const LIBRARY_STEP: TourStep = {
-  path: '/library',
-  selector: '[data-tour="library-list"]',
-  title: 'Use Case Library',
-  description: 'The master list of use cases per industry, each with real example accounts — admin-managed, and what the Growth tab on a client draws from.',
-}
-
-const SETTINGS_STEP: TourStep = {
-  path: '/settings',
-  selector: '[data-tour="settings-main"]',
-  title: 'Settings',
-  description: 'Manage the team and roles, dropdown options (Sales SPOC, Country, Modules…), and the default 30-day plan template used for every new client.',
+const ADMIN_STEP: TourStep = {
+  path: '/planner',
+  selector: '[data-tour="admin-links"]',
+  title: 'Use Cases & Settings',
+  description: 'Use Cases is the admin-managed library behind each client\'s Growth tab. Settings covers team roles, dropdown options, and the default 30-day plan template.',
 }
 
 export function getTourSteps(role: Role): TourStep[] {
-  const steps = [...CORE_STEPS, PLANNER_STEP, NOTIF_STEP]
-  if (role === 'admin') steps.push(LIBRARY_STEP, SETTINGS_STEP)
+  const steps = [...CORE_STEPS, PLANNER_STEP]
+  if (role === 'admin') steps.push(ADMIN_STEP)
   return steps
 }

@@ -57,15 +57,25 @@ export default async function ClientUpdatePage({
     const { data: rollout } = await supabase
       .from('rollout_confirmations').select('*').eq('client_id', id).maybeSingle()
 
-    // Growth use cases
-    const { data: cuc } = await supabase
-      .from('client_use_cases')
-      .select('*, use_case:use_cases(*)')
-      .eq('client_id', id)
+    // Growth use cases — the full industry-matched catalog (same two-query
+    // pattern as the Growth tab: industry names contain '&'/'(' which break
+    // a .or() filter string), not just use_cases someone has explicitly
+    // toggled. Otherwise "Could also explore" only ever shows use cases
+    // that were toggled on then off, instead of every untried one.
+    const [{ data: cuc }, { data: ucGlobal }, { data: ucIndustry }] = await Promise.all([
+      supabase.from('client_use_cases').select('*, use_case:use_cases(*)').eq('client_id', id),
+      supabase.from('use_cases').select('*').is('industry_tag', null),
+      (client as Client).industry
+        ? supabase.from('use_cases').select('*').eq('industry_tag', (client as Client).industry)
+        : Promise.resolve({ data: [] as UseCase[] }),
+    ])
 
     const clientUseCases = (cuc ?? []) as ClientUseCase[]
-    usingItems    = clientUseCases.filter((c) => c.is_using  && c.use_case).map((c) => c.use_case!)
-    notYetItems   = clientUseCases.filter((c) => !c.is_using && c.use_case).map((c) => c.use_case!)
+    const allUseCases = [...((ucGlobal ?? []) as UseCase[]), ...((ucIndustry ?? []) as UseCase[])]
+    const usingIds = new Set(clientUseCases.filter((c) => c.is_using).map((c) => c.use_case_id))
+
+    usingItems  = allUseCases.filter((uc) => usingIds.has(uc.id))
+    notYetItems = allUseCases.filter((uc) => !usingIds.has(uc.id))
 
     typedClient  = client as Client
     typedSteps   = (planSteps ?? []) as PlanStep[]
@@ -92,12 +102,12 @@ export default async function ClientUpdatePage({
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs bg-green-700 text-white rounded-full px-2.5 py-1 font-medium">Client-safe · no internal data</span>
-          <PrintButton />
+          <PrintButton clientName={typedClient.name} />
         </div>
       </div>
 
       {/* Report content */}
-      <div className="max-w-3xl mx-auto px-8 py-12">
+      <div id="report-content" className="max-w-3xl mx-auto px-8 py-12">
         {/* Header */}
         <div className="border-b-2 border-gray-900 pb-6 mb-8">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">
