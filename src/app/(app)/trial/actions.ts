@@ -6,6 +6,12 @@ import { redirect } from 'next/navigation'
 import { notifyMentions } from '@/lib/notify'
 import type { TrialStatus, DemoCredential } from '@/lib/types'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function isVisitor(supabase: any, userId: string): Promise<boolean> {
+  const { data } = await supabase.from('profiles').select('role').eq('id', userId).single()
+  return data?.role === 'visitor'
+}
+
 export async function addTrialAccountAction(fields: {
   name: string
   trialUrl?: string
@@ -16,6 +22,7 @@ export async function addTrialAccountAction(fields: {
 }): Promise<{ error?: string; id?: string }> {
   const { supabase, user } = await getSessionUser()
   if (!user) return { error: 'Not authenticated' }
+  if (await isVisitor(supabase, user.id)) return { error: 'Visitors have read-only access' }
   if (!fields.name.trim()) return { error: 'Name is required' }
 
   const { data, error } = await supabase
@@ -58,6 +65,7 @@ export async function updateTrialAccountAction(
 ): Promise<{ error?: string }> {
   const { supabase, user } = await getSessionUser()
   if (!user) return { error: 'Not authenticated' }
+  if (await isVisitor(supabase, user.id)) return { error: 'Visitors have read-only access' }
 
   const payload: Record<string, unknown> = {}
   if (fields.name !== undefined) payload.name = fields.name.trim()
@@ -105,6 +113,7 @@ export async function addTrialNoteAction(
 ) {
   const { supabase, user } = await getSessionUser()
   if (!user || !content.trim()) return
+  if (await isVisitor(supabase, user.id)) return
 
   const [{ data: p }, { data: trial }] = await Promise.all([
     supabase.from('profiles').select('full_name, email').eq('id', user.id).single(),
@@ -144,6 +153,7 @@ export async function addTrialNoteAction(
 export async function deleteTrialNoteAction(noteId: string, trialAccountId: string) {
   const { supabase, user } = await getSessionUser()
   if (!user) return
+  if (await isVisitor(supabase, user.id)) return
   await supabase.from('client_notes').delete().eq('id', noteId).eq('author_id', user.id)
   revalidatePath(`/trial/${trialAccountId}`)
   revalidatePath('/planner')
@@ -152,6 +162,7 @@ export async function deleteTrialNoteAction(noteId: string, trialAccountId: stri
 export async function toggleTrialNoteDeadlineDoneAction(noteId: string, trialAccountId: string, done: boolean) {
   const { supabase, user } = await getSessionUser()
   if (!user) return
+  if (await isVisitor(supabase, user.id)) return
   await supabase.from('client_notes').update({ deadline_done: done }).eq('id', noteId).eq('author_id', user.id)
   revalidatePath(`/trial/${trialAccountId}`)
   revalidatePath('/planner')

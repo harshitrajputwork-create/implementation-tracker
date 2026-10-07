@@ -109,7 +109,10 @@ export default function TeamClient({
           Invite someone
         </h2>
         <p className="text-sm text-gray-500 mb-4">
-          Enter their Google email. When they sign in for the first time they&apos;ll automatically get the role you assign.
+          Pre-assign a role to a @taqtics.co address before they&apos;ve ever signed in — e.g. the other founders as Admin.
+          When they sign in with Google for the first time, this role is applied automatically instead of the default.
+          Anyone signing in without a pre-assigned role gets <strong>Visitor</strong> access until an admin changes it here.
+          Only @taqtics.co Google accounts can sign in at all.
         </p>
         <div className="flex items-center gap-3 flex-wrap">
           <input

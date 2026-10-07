@@ -2,14 +2,28 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 const IS_DEV = process.env.NEXT_PUBLIC_DEV_BYPASS === 'true'
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginForm() {
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
+  const searchParams = useSearchParams()
+  const error = searchParams.get('error')
+  const errorMessage = error === 'auth_failed'
+    ? 'Sign-in failed — please try again.'
+    : error
 
   async function signInWithGoogle() {
     setLoading(true)
@@ -46,6 +60,12 @@ export default function LoginPage() {
             Taqtics internal tool · Sign in to continue
           </p>
         </div>
+
+        {errorMessage && (
+          <div className="mb-5 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+            {errorMessage}
+          </div>
+        )}
 
         {/* Dev bypass button — only shown locally */}
         {IS_DEV && (

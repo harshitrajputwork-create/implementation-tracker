@@ -8,6 +8,11 @@ import type { ClientStatus, StepStatus, DeviationCause } from '@/lib/types'
 
 type SB = Awaited<ReturnType<typeof createClient>>
 
+async function isVisitor(supabase: SB, userId: string): Promise<boolean> {
+  const { data } = await supabase.from('profiles').select('role').eq('id', userId).single()
+  return data?.role === 'visitor'
+}
+
 async function touchActivity(supabase: SB, clientId: string) {
   await supabase
     .from('clients')
@@ -34,6 +39,7 @@ export async function updateStepAction(
   realDate?: string,
 ) {
   const { supabase, user } = await getSessionUser()
+  if (user && await isVisitor(supabase, user.id)) return
 
   const { data: step } = await supabase
     .from('plan_steps').select('step_name').eq('id', stepId).single()
@@ -65,6 +71,7 @@ export async function updateStepNotesAction(
   clientVisible: boolean = false,
 ) {
   const { supabase, user } = await getSessionUser()
+  if (user && await isVisitor(supabase, user.id)) return
 
   await supabase
     .from('plan_steps')
@@ -83,6 +90,7 @@ export async function updateStepConfigAction(
   dayRange: string,
 ) {
   const { supabase, user } = await getSessionUser()
+  if (user && await isVisitor(supabase, user.id)) return
 
   await supabase
     .from('plan_steps')
@@ -99,6 +107,7 @@ export async function updateClientStatusAction(
   statusOverride: ClientStatus | null,
 ) {
   const { supabase, user } = await getSessionUser()
+  if (user && await isVisitor(supabase, user.id)) return
 
   await supabase
     .from('clients')
@@ -119,6 +128,7 @@ export async function addDeviationEntryAction(
 ) {
   const { supabase, user } = await getSessionUser()
   if (!user || !note.trim()) return
+  if (await isVisitor(supabase, user.id)) return
 
   const { data: inserted } = await supabase
     .from('deviation_log')
@@ -159,6 +169,7 @@ export async function setRolloutDateAction(
 ) {
   const { supabase, user } = await getSessionUser()
   if (!user) return
+  if (await isVisitor(supabase, user.id)) return
 
   await supabase.from('rollout_confirmations').upsert(
     { client_id: clientId, confirmed_date: confirmedDate, set_by: user.id, notes: notes || null },
@@ -176,6 +187,7 @@ export async function markHandedOverAction(
   handoverDate: string,
 ) {
   const { supabase, user } = await getSessionUser()
+  if (user && await isVisitor(supabase, user.id)) return
 
   await supabase
     .from('clients')
@@ -194,6 +206,7 @@ export async function markHandedOverAction(
 
 export async function updateClientNotesAction(clientId: string, notes: string) {
   const { supabase, user } = await getSessionUser()
+  if (user && await isVisitor(supabase, user.id)) return
 
   await supabase.from('clients').update({ notes: notes || null }).eq('id', clientId)
 
@@ -222,6 +235,7 @@ export async function updateClientMetaAction(
 ) {
   const { supabase, user } = await getSessionUser()
   if (!user) return
+  if (await isVisitor(supabase, user.id)) return
 
   await supabase.from('clients').update(fields).eq('id', clientId)
 
@@ -257,6 +271,7 @@ export async function addSpocAction(
 ) {
   const { supabase, user } = await getSessionUser()
   if (!user) return
+  if (await isVisitor(supabase, user.id)) return
 
   const { data: last } = await supabase
     .from('client_spocs').select('sort_order').eq('client_id', clientId)
@@ -281,6 +296,7 @@ export async function updateSpocAction(
 ) {
   const { supabase, user } = await getSessionUser()
   if (!user) return
+  if (await isVisitor(supabase, user.id)) return
 
   await supabase.from('client_spocs').update({
     name: fields.name.trim(),
@@ -294,6 +310,7 @@ export async function updateSpocAction(
 export async function deleteSpocAction(spocId: string, clientId: string) {
   const { supabase, user } = await getSessionUser()
   if (!user) return
+  if (await isVisitor(supabase, user.id)) return
   await supabase.from('client_spocs').delete().eq('id', spocId)
   revalidatePath(`/clients/${clientId}`)
 }
@@ -321,6 +338,7 @@ export async function addClientNoteAction(
 ) {
   const { supabase, user } = await getSessionUser()
   if (!user || !content.trim()) return
+  if (await isVisitor(supabase, user.id)) return
 
   const [{ data: p }, { data: client }] = await Promise.all([
     supabase.from('profiles').select('full_name, email').eq('id', user.id).single(),
@@ -362,6 +380,7 @@ export async function addClientNoteAction(
 export async function deleteClientNoteAction(noteId: string, clientId: string) {
   const { supabase, user } = await getSessionUser()
   if (!user) return
+  if (await isVisitor(supabase, user.id)) return
   await supabase.from('client_notes').delete().eq('id', noteId).eq('author_id', user.id)
   revalidatePath(`/clients/${clientId}`)
   revalidatePath('/planner')
@@ -370,6 +389,7 @@ export async function deleteClientNoteAction(noteId: string, clientId: string) {
 export async function toggleNoteDeadlineDoneAction(noteId: string, clientId: string, done: boolean) {
   const { supabase, user } = await getSessionUser()
   if (!user) return
+  if (await isVisitor(supabase, user.id)) return
   await supabase.from('client_notes').update({ deadline_done: done }).eq('id', noteId).eq('author_id', user.id)
   revalidatePath(`/clients/${clientId}`)
   revalidatePath('/planner')

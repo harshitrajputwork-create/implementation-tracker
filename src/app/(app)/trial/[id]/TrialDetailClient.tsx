@@ -81,7 +81,7 @@ function NoteRow({ note, currentUserId, onDelete, onToggleDeadline }: {
 }
 
 export default function TrialDetailClient({
-  trial, notes: initialNotes, currentUserId, configOptions, members, isAdmin,
+  trial, notes: initialNotes, currentUserId, configOptions, members, isAdmin, isVisitor,
 }: {
   trial: TrialAccount
   notes: ClientNoteEntry[]
@@ -89,6 +89,7 @@ export default function TrialDetailClient({
   configOptions: ConfigOption[]
   members: Profile[]
   isAdmin: boolean
+  isVisitor: boolean
 }) {
   const router = useRouter()
   const [notes, setNotes] = useState(initialNotes)
@@ -401,9 +402,11 @@ export default function TrialDetailClient({
             <div className="flex items-start justify-between gap-3 mb-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-bold text-gray-900">{trial.name}</h1>
-                <button onClick={() => setEditing(true)} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md">
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
+                {!isVisitor && (
+                  <button onClick={() => setEditing(true)} className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLOR[trial.status]}`}>{trial.status}</span>
               </div>
               {trial.trial_url && (
@@ -447,10 +450,10 @@ export default function TrialDetailClient({
             <button
               key={s}
               onClick={() => changeStatus(s)}
-              disabled={isPending}
+              disabled={isPending || isVisitor}
               className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
                 trial.status === s ? STATUS_COLOR[s] + ' ring-1 ring-offset-1 ring-purple-400' : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300'
-              }`}
+              } ${isVisitor ? 'cursor-default' : ''}`}
             >
               {s}
             </button>
@@ -460,14 +463,14 @@ export default function TrialDetailClient({
           <Link href={`/clients/${trial.converted_client_id}`} className="flex items-center gap-1.5 text-sm text-green-700 font-medium hover:underline w-fit">
             View implementation client <ArrowRight className="w-3.5 h-3.5" />
           </Link>
-        ) : (
+        ) : !isVisitor ? (
           <Link
             href={`/clients/new?fromTrial=${trial.id}`}
             className="flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors w-fit"
           >
             Convert to Implementation <ArrowRight className="w-4 h-4" />
           </Link>
-        )}
+        ) : null}
       </div>
 
       {/* Demo credentials */}
@@ -502,9 +505,11 @@ export default function TrialDetailClient({
               {columns.map((col) => (
                 <span key={col} className="flex items-center gap-1 normal-case">
                   {col}
-                  <button onClick={() => removeColumn(col)} title={`Remove column "${col}"`} className="text-gray-300 hover:text-red-500">
-                    <X className="w-2.5 h-2.5" />
-                  </button>
+                  {!isVisitor && (
+                    <button onClick={() => removeColumn(col)} title={`Remove column "${col}"`} className="text-gray-300 hover:text-red-500">
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  )}
                 </span>
               ))}
               <span />
@@ -521,6 +526,7 @@ export default function TrialDetailClient({
                   onPaste={(e) => handleIdPaste(e, i)}
                   onBlur={() => saveCredentials()}
                   placeholder="employee1@angadi.com"
+                  readOnly={isVisitor}
                   className={inputCls}
                 />
                 <input
@@ -528,6 +534,7 @@ export default function TrialDetailClient({
                   onChange={(e) => updateCredentialField(i, 'password', e.target.value)}
                   onBlur={() => saveCredentials()}
                   placeholder="One-time temp password"
+                  readOnly={isVisitor}
                   className={inputCls}
                 />
                 {columns.map((col) => (
@@ -536,57 +543,62 @@ export default function TrialDetailClient({
                     value={c.extra?.[col] ?? ''}
                     onChange={(e) => updateCredentialExtra(i, col, e.target.value)}
                     onBlur={() => saveCredentials()}
+                    readOnly={isVisitor}
                     className={inputCls}
                   />
                 ))}
-                <button onClick={() => removeCredentialRow(i)} title="Remove" className="text-gray-300 hover:text-red-500 p-1">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                {!isVisitor && (
+                  <button onClick={() => removeCredentialRow(i)} title="Remove" className="text-gray-300 hover:text-red-500 p-1">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
         )}
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <button
-            onClick={addCredentialRow}
-            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 font-medium"
-          >
-            <Plus className="w-3.5 h-3.5" /> Add login
-          </button>
-          {suggestedPassword && credentials.some((c) => !c.password.trim()) && (
+        {!isVisitor && (
+          <div className="flex items-center gap-3 flex-wrap">
             <button
-              onClick={fillEmptyPasswords}
-              className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 font-medium"
-            >
-              <KeyRound className="w-3.5 h-3.5" /> Fill empty passwords
-            </button>
-          )}
-          {addingColumn ? (
-            <div className="flex items-center gap-1.5">
-              <input
-                autoFocus
-                value={newColumnName}
-                onChange={(e) => setNewColumnName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') addColumn()
-                  if (e.key === 'Escape') { setAddingColumn(false); setNewColumnName('') }
-                }}
-                placeholder="Column name (e.g. Store)"
-                className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-purple-500 w-36"
-              />
-              <button onClick={addColumn} className="text-xs text-purple-600 hover:text-purple-700 font-medium">Add</button>
-              <button onClick={() => { setAddingColumn(false); setNewColumnName('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setAddingColumn(true)}
+              onClick={addCredentialRow}
               className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 font-medium"
             >
-              <Plus className="w-3.5 h-3.5" /> Add column
+              <Plus className="w-3.5 h-3.5" /> Add login
             </button>
-          )}
-        </div>
+            {suggestedPassword && credentials.some((c) => !c.password.trim()) && (
+              <button
+                onClick={fillEmptyPasswords}
+                className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 font-medium"
+              >
+                <KeyRound className="w-3.5 h-3.5" /> Fill empty passwords
+              </button>
+            )}
+            {addingColumn ? (
+              <div className="flex items-center gap-1.5">
+                <input
+                  autoFocus
+                  value={newColumnName}
+                  onChange={(e) => setNewColumnName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') addColumn()
+                    if (e.key === 'Escape') { setAddingColumn(false); setNewColumnName('') }
+                  }}
+                  placeholder="Column name (e.g. Store)"
+                  className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-purple-500 w-36"
+                />
+                <button onClick={addColumn} className="text-xs text-purple-600 hover:text-purple-700 font-medium">Add</button>
+                <button onClick={() => { setAddingColumn(false); setNewColumnName('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setAddingColumn(true)}
+                className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 font-medium"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add column
+              </button>
+            )}
+          </div>
+        )}
         {savingCredentials && <p className="text-[11px] text-gray-400 mt-1">Saving…</p>}
         {credentialsError && <p className="text-[11px] text-red-600 mt-1 font-medium">Not saved — {credentialsError}</p>}
       </div>
@@ -603,9 +615,10 @@ export default function TrialDetailClient({
           onBlur={() => { if (useCaseNotes !== (trial.use_case_notes ?? '')) saveUseCaseNotes() }}
           placeholder="What use case are you demoing to this client during the trial?"
           rows={12}
+          readOnly={isVisitor}
           className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-purple-500 resize-y placeholder-gray-400 bg-white font-mono"
         />
-        {savingUseCase && <p className="text-[11px] text-gray-400 mt-1">Saving…</p>}
+        {!isVisitor && savingUseCase && <p className="text-[11px] text-gray-400 mt-1">Saving…</p>}
       </div>
 
       {/* Notes */}
@@ -625,6 +638,7 @@ export default function TrialDetailClient({
             />
           ))}
         </div>
+        {!isVisitor && (
         <div className="p-3 border-t border-gray-100 space-y-2">
           <MentionTextarea
             value={content}
@@ -665,6 +679,7 @@ export default function TrialDetailClient({
             </button>
           </div>
         </div>
+        )}
       </div>
       </div>
     </div>

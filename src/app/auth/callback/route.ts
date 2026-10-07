@@ -12,6 +12,10 @@ export async function GET(request: Request) {
     if (!error) {
       return NextResponse.redirect(`${origin}${next}`)
     }
+    // The enforce_taqtics_domain() trigger (migration 018) rejects sign-up
+    // for non-@taqtics.co accounts by raising a Postgres exception — that
+    // message ends up here. It's our own text, safe to show directly.
+    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`)
   }
 
   return NextResponse.redirect(`${origin}/login?error=auth_failed`)

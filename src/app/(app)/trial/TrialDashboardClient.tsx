@@ -23,9 +23,10 @@ interface Props {
   initialTrials: TrialAccount[]
   configOptions: ConfigOption[]
   members: Profile[]
+  isVisitor: boolean
 }
 
-export default function TrialDashboardClient({ initialTrials, configOptions }: Props) {
+export default function TrialDashboardClient({ initialTrials, configOptions, isVisitor }: Props) {
   const router = useRouter()
   const [trials, setTrials] = useState(initialTrials)
   const [statusFilter, setStatusFilter] = useState<TrialStatus | 'All'>('Active')
@@ -90,36 +91,38 @@ export default function TrialDashboardClient({ initialTrials, configOptions }: P
       </div>
 
       {/* Quick add */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Log a new trial</p>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Account name" className={inputCls} />
-          <input value={trialUrl} onChange={(e) => setTrialUrl(e.target.value)} placeholder="Trial URL" className={inputCls} />
-          <select value={salesSpoc} onChange={(e) => setSalesSpoc(e.target.value)} className={inputCls}>
-            <option value="">Sales SPOC</option>
-            {spocOptions.map((o) => <option key={o.id} value={o.label}>{o.label}</option>)}
-          </select>
-          <select value={country} onChange={(e) => setCountry(e.target.value)} className={inputCls}>
-            <option value="">Country</option>
-            {countryOptions.map((o) => <option key={o.id} value={o.label}>{o.label}</option>)}
-          </select>
-          <select value={companySize} onChange={(e) => setCompanySize(e.target.value)} className={inputCls}>
-            <option value="">Size of account</option>
-            {TICKET_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+      {!isVisitor && (
+        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Log a new trial</p>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2">
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Account name" className={inputCls} />
+            <input value={trialUrl} onChange={(e) => setTrialUrl(e.target.value)} placeholder="Trial URL" className={inputCls} />
+            <select value={salesSpoc} onChange={(e) => setSalesSpoc(e.target.value)} className={inputCls}>
+              <option value="">Sales SPOC</option>
+              {spocOptions.map((o) => <option key={o.id} value={o.label}>{o.label}</option>)}
+            </select>
+            <select value={country} onChange={(e) => setCountry(e.target.value)} className={inputCls}>
+              <option value="">Country</option>
+              {countryOptions.map((o) => <option key={o.id} value={o.label}>{o.label}</option>)}
+            </select>
+            <select value={companySize} onChange={(e) => setCompanySize(e.target.value)} className={inputCls}>
+              <option value="">Size of account</option>
+              {TICKET_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <p className="text-[11px] text-gray-400 mb-2">Trial start date isn&apos;t set here — add it on the account page once the trial actually kicks off.</p>
+          <div className="flex justify-end">
+            <button
+              onClick={addTrial}
+              disabled={isPending || !name.trim()}
+              className="flex items-center gap-1.5 px-4 py-2 bg-purple-500 text-white text-sm font-semibold rounded-lg hover:bg-purple-600 disabled:opacity-40 transition-colors"
+            >
+              <Plus className="w-4 h-4" /> {isPending ? 'Saving…' : 'Add trial account'}
+            </button>
+          </div>
+          {error && <p className="text-xs text-red-600 mt-2">Not saved — {error}</p>}
         </div>
-        <p className="text-[11px] text-gray-400 mb-2">Trial start date isn&apos;t set here — add it on the account page once the trial actually kicks off.</p>
-        <div className="flex justify-end">
-          <button
-            onClick={addTrial}
-            disabled={isPending || !name.trim()}
-            className="flex items-center gap-1.5 px-4 py-2 bg-purple-500 text-white text-sm font-semibold rounded-lg hover:bg-purple-600 disabled:opacity-40 transition-colors"
-          >
-            <Plus className="w-4 h-4" /> {isPending ? 'Saving…' : 'Add trial account'}
-          </button>
-        </div>
-        {error && <p className="text-xs text-red-600 mt-2">Not saved — {error}</p>}
-      </div>
+      )}
 
       {/* Status filter */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">

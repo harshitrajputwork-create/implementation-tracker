@@ -84,6 +84,9 @@ export async function toggleClientUseCaseAction(
   const { supabase, user } = await getSessionUser()
   if (!user) return
 
+  const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (me?.role === 'visitor') return
+
   await supabase.from('client_use_cases').upsert(
     { client_id: clientId, use_case_id: useCaseId, is_using: isUsing, updated_at: new Date().toISOString() },
     { onConflict: 'client_id,use_case_id' }

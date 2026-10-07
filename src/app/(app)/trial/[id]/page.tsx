@@ -43,6 +43,7 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
         configOptions={configOptions}
         members={(members ?? []) as Profile[]}
         isAdmin={me?.role === 'admin'}
+        isVisitor={me?.role === 'visitor'}
       />
     </div>
   )

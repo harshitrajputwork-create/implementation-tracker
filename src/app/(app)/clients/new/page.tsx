@@ -38,6 +38,9 @@ async function createClientAction(formData: FormData) {
   const { supabase, user } = await getSessionUser()
   if (!user) redirect('/login')
 
+  const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (me?.role === 'visitor') redirect('/dashboard')
+
   // Insert the client and fetch the step template concurrently — the template
   // lookup does not depend on the new client row.
   const [{ data: client, error }, { data: templateRows }] = await Promise.all([
