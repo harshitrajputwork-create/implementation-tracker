@@ -102,6 +102,17 @@ export function computeOverdueDays(
 ): number {
   if (!kickoffDate || steps.length === 0) return 0
 
+  // An early step that's further along (lower day-range) than the latest
+  // *done* step is almost always just an un-ticked checkbox, not a real
+  // blocker — e.g. "Kickoff" (D1) never got marked done, but step 6 (D16)
+  // already is, so Kickoff obviously happened. Only steps beyond the
+  // furthest progress actually made count toward overdue, so stale early
+  // steps can't single-handedly flip the whole account to Blocked.
+  const maxDoneEndDay = steps.reduce((max, s) => {
+    if (s.status !== 'done') return max
+    return Math.max(max, parseDayRange(s.ideated_day_range).endDay)
+  }, 0)
+
   let maxOverdue = 0
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -109,6 +120,7 @@ export function computeOverdueDays(
   for (const step of steps) {
     if (step.status === 'done') continue
     const { endDay } = parseDayRange(step.ideated_day_range)
+    if (endDay <= maxDoneEndDay) continue
     const idealEnd = new Date(kickoffDate)
     idealEnd.setDate(idealEnd.getDate() + endDay - 1)
     const overdue = differenceInCalendarDays(today, idealEnd)
