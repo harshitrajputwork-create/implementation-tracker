@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import type { Profile, Invitation, Role } from '@/lib/types'
-import { cn, getInitials } from '@/lib/utils'
+import type { Profile, Invitation, Role, LoginTime } from '@/lib/types'
+import { cn, getInitials, formatDateTime } from '@/lib/utils'
 import { inviteUserAction, updateUserRoleAction, revokeInvitationAction, removeMemberAction } from './actions'
 import { Mail, Shield, Plus, X, Check, Trash2, UserPlus } from 'lucide-react'
 
@@ -56,11 +56,14 @@ export default function TeamClient({
   members,
   invitations,
   currentUserId,
+  loginTimes,
 }: {
   members: Profile[]
   invitations: Invitation[]
   currentUserId: string | null
+  loginTimes: LoginTime[]
 }) {
+  const loginByEmail = new Map(loginTimes.map((l) => [l.email, l.last_sign_in_at]))
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [removeError, setRemoveError] = useState('')
 
@@ -189,6 +192,11 @@ export default function TeamClient({
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900">{m.full_name ?? '—'}</p>
                 <p className="text-xs text-gray-400">{m.email}</p>
+                {loginTimes.length > 0 && (
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    Last seen: {loginByEmail.get(m.email) ? formatDateTime(loginByEmail.get(m.email)!) : 'Never'}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <Shield className="w-3.5 h-3.5 text-gray-300" />

@@ -5,7 +5,7 @@ import { ChevronLeft, Settings } from 'lucide-react'
 import SettingsView from '../../settings/SettingsView'
 import { PLAN_TEMPLATE } from '@/lib/plan-template'
 import { IS_DEV_BYPASS, MOCK_MEMBERS } from '@/lib/dev-mock'
-import type { Profile, Invitation, ConfigOption, Role } from '@/lib/types'
+import type { Profile, Invitation, ConfigOption, Role, LoginTime } from '@/lib/types'
 
 // Separate route from /settings (rather than reusing the same page) so
 // trial-specific settings can be added here later without affecting
@@ -23,6 +23,7 @@ export default async function TrialSettingsPage({
   let invitations: Invitation[] = []
   let configOptions: ConfigOption[] = []
   let rows: { id: string; step_order: number; step_name: string; ideated_day_range: string; description: string | null }[] | null = []
+  let loginTimes: LoginTime[] = []
 
   if (IS_DEV_BYPASS) {
     members = MOCK_MEMBERS
@@ -45,6 +46,11 @@ export default async function TrialSettingsPage({
     invitations = (inv ?? []) as Invitation[]
     configOptions = (opts ?? []) as ConfigOption[]
     rows = stepRows
+
+    if (user.email === 'harshit.rajput@taqtics.co') {
+      const { data: lt } = await supabase.rpc('get_member_login_times')
+      loginTimes = (lt ?? []) as LoginTime[]
+    }
   }
 
   const steps = rows && rows.length > 0
@@ -86,6 +92,7 @@ export default async function TrialSettingsPage({
         configOptions={configOptions}
         optionsMigrationMissing={configOptions.length === 0}
         stepsMigrationMissing={!!(rows && rows.length === 0)}
+        loginTimes={loginTimes}
       />
     </div>
   )

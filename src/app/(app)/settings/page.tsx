@@ -5,7 +5,7 @@ import { ChevronLeft, Settings } from 'lucide-react'
 import SettingsView from './SettingsView'
 import { PLAN_TEMPLATE } from '@/lib/plan-template'
 import { IS_DEV_BYPASS, MOCK_PROFILE, MOCK_MEMBERS } from '@/lib/dev-mock'
-import type { Profile, Invitation, ConfigOption, Role } from '@/lib/types'
+import type { Profile, Invitation, ConfigOption, Role, LoginTime } from '@/lib/types'
 
 export default async function SettingsPage({
   searchParams,
@@ -20,6 +20,7 @@ export default async function SettingsPage({
   let invitations: Invitation[] = []
   let configOptions: ConfigOption[] = []
   let rows: { id: string; step_order: number; step_name: string; ideated_day_range: string; description: string | null }[] | null = []
+  let loginTimes: LoginTime[] = []
 
   if (IS_DEV_BYPASS) {
     members = MOCK_MEMBERS
@@ -42,6 +43,14 @@ export default async function SettingsPage({
     invitations = (inv ?? []) as Invitation[]
     configOptions = (opts ?? []) as ConfigOption[]
     rows = stepRows
+
+    // The function itself only returns rows when called by this exact
+    // email (migration 019) — everyone else gets an empty result, not an
+    // error, so it's safe to always call.
+    if (user.email === 'harshit.rajput@taqtics.co') {
+      const { data: lt } = await supabase.rpc('get_member_login_times')
+      loginTimes = (lt ?? []) as LoginTime[]
+    }
   }
 
   const steps = rows && rows.length > 0
@@ -83,6 +92,7 @@ export default async function SettingsPage({
         configOptions={configOptions}
         optionsMigrationMissing={configOptions.length === 0}
         stepsMigrationMissing={!!(rows && rows.length === 0)}
+        loginTimes={loginTimes}
       />
     </div>
   )

@@ -5,7 +5,7 @@ import { Users, Settings as SettingsIcon } from 'lucide-react'
 import TeamClient from '../team/TeamClient'
 import ConfigEditor, { type TemplateStep } from '../config/ConfigEditor'
 import ConfigOptionsEditor from '../config/ConfigOptionsEditor'
-import type { Profile, Invitation, ConfigOption } from '@/lib/types'
+import type { Profile, Invitation, ConfigOption, LoginTime } from '@/lib/types'
 
 type Tab = 'team' | 'config'
 
@@ -18,10 +18,11 @@ interface Props {
   configOptions: ConfigOption[]
   optionsMigrationMissing: boolean
   stepsMigrationMissing: boolean
+  loginTimes: LoginTime[]
 }
 
 export default function SettingsView({
-  initialTab, members, invitations, currentUserId, steps, configOptions, optionsMigrationMissing, stepsMigrationMissing,
+  initialTab, members, invitations, currentUserId, steps, configOptions, optionsMigrationMissing, stepsMigrationMissing, loginTimes,
 }: Props) {
   const [tab, setTab] = useState<Tab>(initialTab)
 
@@ -47,7 +48,7 @@ export default function SettingsView({
       </div>
 
       {tab === 'team' ? (
-        <TeamClient members={members} invitations={invitations} currentUserId={currentUserId} />
+        <TeamClient members={members} invitations={invitations} currentUserId={currentUserId} loginTimes={loginTimes} />
       ) : (
         <div>
           <div className="mb-10">

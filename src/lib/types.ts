@@ -21,6 +21,13 @@ export interface Invitation {
   created_at: string
 }
 
+export interface LoginTime {
+  id: string
+  email: string
+  last_sign_in_at: string | null
+  created_at: string
+}
+
 export interface Client {
   id: string
   name: string
